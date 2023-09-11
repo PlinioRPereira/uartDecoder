@@ -4,10 +4,11 @@ from PeakFinder import PeakFinder
 decoder = UartDecoder('./test-exp1.wav')
 utils = PeakFinder()
 
-confidence = 99
-min_percent_over_threshold = 25
+confidence = 98
+min_percent_over_threshold = 45
 peaks = utils.find_peaks(decoder.left_channel,confidence,min_percent_over_threshold)
-#print("peaks:",peaks)
+formatedPeaks = utils.format_peaks(peaks)
+print("peaks:",formatedPeaks)
 # Decodificar os dados
 decoded_data = decoder.decode(1)
 selectedBytes = utils.find_intersection(peaks, decoded_data)

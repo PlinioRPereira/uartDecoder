@@ -33,27 +33,51 @@ class PeakFinder:
         return max_threshold, min_threshold
 
     def get_peak_time(self, sampleIdx, sampleRate):
-        samplePeriod = 1/sampleRate
-        rawTimeValue = sampleIdx * sampleRate
-        segundos = int(rawTimeValue)
-        milisegundos = int((rawTimeValue - segundos) * 1000)
-        time = datetime.timedelta(seconds=segundos, milliseconds=milisegundos)
-        return time
+        rawTimeValue = sampleIdx / sampleRate  # Note que é uma divisão aqui
+        # print("rawTimeValue:", rawTimeValue)
+        #
+        # segundos = int(rawTimeValue)
+        # milisegundos = ((rawTimeValue - segundos) * 1000)
+        # time = datetime.timedelta(seconds=segundos, milliseconds=milisegundos)
+        return rawTimeValue
 
-    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):   
+    def format_peaks(self,peaks):
+        formatted_peaks = []
+        for i, peak in enumerate(peaks):
+            start_time = "{:.4f}".format(peak[4])
+            end_time = "{:.4f}".format(peak[5])
+            formatted_peak = [
+                f'Pico {i + 1}',
+                start_time,
+                end_time
+            ]
+            formatted_peaks.append(formatted_peak)
+        return formatted_peaks
+
+    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
         peak_intervals = []
         peak_start = None
         peak_value = None
 
-        for i, sample in enumerate(audio_signal):
-            diff = abs(sample - max_threshold) if sample > max_threshold else abs(sample - min_threshold)
-            percent_over = (diff / max_threshold) * 100 if sample > max_threshold else (diff / min_threshold) * 100
+        print("find_peaks:", max_threshold,min_threshold)
 
+        for i, sample in enumerate(audio_signal):
             is_peak = False
-            if percent_over >= min_percent_over_threshold:
-                if sample > max_threshold or sample < min_threshold:
+
+            # Check for positive peaks
+            if sample > max_threshold:
+                diff = abs(sample - max_threshold)
+                percent_over = (diff / max_threshold) * 100
+                if percent_over >= min_percent_over_threshold:
+                    is_peak = True
+
+            # Check for negative peaks
+            elif sample < min_threshold:
+                diff = abs(sample - min_threshold)
+                percent_over = abs((diff / min_threshold)) * 100
+                if percent_over >= min_percent_over_threshold:
                     is_peak = True
 
             if is_peak:
@@ -67,6 +91,9 @@ class PeakFinder:
                 peak_end_time = self.get_peak_time(peak_end, sampleRate)
                 peak_intervals.append([peak_start, peak_end, diff, percent_over, peak_start_time, peak_end_time])
                 peak_start = None
+                peak_end = None
+                peak_start_time = None
+                peak_end_time = None
                 peak_value = None
 
         return peak_intervals

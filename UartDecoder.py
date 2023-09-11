@@ -290,10 +290,10 @@ class UartDecoder:
                     byteObj.beginCluster = frameBeginIdx
                     if bitCluster.beginSample is not None:
                         byteObj.endSample = bitCluster.beginSample + bitCluster.length - 1
+                        outputBytes.append(byteObj)
                     else:
                         byteObj.endSample = 0 + bitCluster.length - 1
 
-                    outputBytes.append(byteObj)
                     byte = ""
             i = i + 1
 
