@@ -1,5 +1,6 @@
 import numpy as np
-import datetime
+import numpy as np
+from scipy.fftpack import fft
 
 portuguese_chars = [
     # Alfabeto básico
@@ -54,6 +55,88 @@ class PeakFinder:
             formatted_peaks.append(formatted_peak)
         return formatted_peaks
 
+    def find_harmonic_variations(self, audio_signal, sampleRate=44100, percent_threshold=10):
+        harmonic_moments = []  # Armazena os momentos em que ocorrem variações harmônicas
+        fundamental_freq = None
+
+        # Step size for Fourier Transform
+        N = 1024
+
+        for i in range(0, len(audio_signal) - N, N):
+            # Perform FFT to get frequency components
+            fft_values = np.fft.fft(audio_signal[i:i + N])
+            freqs = np.fft.fftfreq(len(fft_values), 1 / sampleRate)
+
+            # Take only the positive frequencies
+            positive_freq_idxs = np.where(freqs > 0)
+            positive_freqs = freqs[positive_freq_idxs]
+            positive_fft_values = np.abs(fft_values[positive_freq_idxs])
+
+            # Find the dominant frequency
+            dominant_frequency = positive_freqs[np.argmax(positive_fft_values)]
+
+            # Initialize fundamental_freq if it is None
+            if fundamental_freq is None:
+                fundamental_freq = dominant_frequency
+            else:
+                if fundamental_freq != 0:  # Check if fundamental frequency is not zero
+                    # Calculate the closest harmonic to the dominant frequency
+                    closest_harmonic = fundamental_freq * np.round(dominant_frequency / fundamental_freq)
+
+                    if closest_harmonic != 0:  # Avoid division by zero
+                        # Calculate the percent difference from the closest harmonic
+                        percent_diff = abs((dominant_frequency - closest_harmonic) / closest_harmonic) * 100
+
+                        # Check if the percent difference exceeds the threshold
+                        if percent_diff > percent_threshold:
+                            moment_time = i / sampleRate
+                            harmonic_moments.append(
+                                [i, fundamental_freq, dominant_frequency, moment_time])
+                            fundamental_freq = dominant_frequency  # Update the fundamental frequency
+                else:
+                    fundamental_freq = dominant_frequency  # Update if the fundamental frequency was zero
+
+        return harmonic_moments
+
+    def find_frequency_peaks(self, audio_signal, sampleRate=44100, threshold_percent=10):
+        frequency_intervals = []
+        freq_start = None
+        freq_value = None
+
+        # Step size for Fourier Transform
+        N = 1024
+
+        for i in range(0, len(audio_signal) - N, N):
+            # Perform FFT to get frequency components
+            fft_values = fft(audio_signal[i:i + N])
+            freqs = np.fft.fftfreq(len(fft_values), 1 / sampleRate)
+
+            # Take only the positive frequencies
+            positive_freq_idxs = np.where(freqs > 0)
+            positive_freqs = freqs[positive_freq_idxs]
+            positive_fft_values = np.abs(fft_values[positive_freq_idxs])
+
+            # Find the dominant frequency
+            dominant_frequency = positive_freqs[np.argmax(positive_fft_values)]
+
+            if freq_start is None:
+                freq_start = i
+                freq_value = dominant_frequency
+            else:
+                # Calculate the percent change in frequency
+                percent_change = ((dominant_frequency - freq_value) / freq_value) * 100
+
+                # Check for sudden change in frequency
+                if abs(percent_change) >= threshold_percent:
+                    freq_end = i
+                    freq_start_time = freq_start / sampleRate
+                    freq_end_time = freq_end / sampleRate
+                    frequency_intervals.append(
+                        [freq_start, freq_end, freq_value, dominant_frequency, freq_start_time, freq_end_time])
+                    freq_start = i
+                    freq_value = dominant_frequency
+
+        return frequency_intervals
     def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
@@ -136,6 +219,33 @@ class PeakFinder:
 
     def extractPortugueseSequence(self,byteObjArray):
         return ''.join([portuguese_chars[byte.value % len(portuguese_chars)] for byte in byteObjArray])
+
+    def find_mismatches(self,left_channel, right_channel):
+        """
+        This function takes two arrays of binarized audio signals (left_channel and right_channel)
+        and returns an array containing the indices where the signals do not match.
+
+        Parameters:
+            left_channel (array): Binarized audio signal for the left channel (array of 0s and 1s).
+            right_channel (array): Binarized audio signal for the right channel (array of 0s and 1s).
+
+        Returns:
+            mismatch_indices (array): Indices where the signals do not match.
+        """
+
+        # Initialize an empty list to store the indices where mismatches occur
+        mismatch_indices = []
+
+        # Check that the lengths of the two channels are the same
+        if len(left_channel) != len(right_channel):
+            return "The lengths of the two channels must be the same."
+
+        # Loop through the arrays to find where the signals do not match
+        for i in range(len(left_channel)):
+            if left_channel[i] != right_channel[i]:
+                mismatch_indices.append(i)
+
+        return np.array(mismatch_indices)
 
 
 
