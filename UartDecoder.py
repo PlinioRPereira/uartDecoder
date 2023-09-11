@@ -2,7 +2,7 @@ import wave
 import numpy as np
 
 class UartDecoder:
-    def __init__(self, file_path, threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=20000):
+    def __init__(self, file_path, threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=900000):
         self.file_path = file_path
         self.left_channel, self.right_channel = self.open_uart_wav()  # Removido o argumento adicional
         self.threshold = threshold
@@ -280,9 +280,18 @@ class UartDecoder:
                     byteObj.value = decoded_gray
 
                     # byteObj.value = int(byteObj.binaryStr, 2)
-                    byteObj.beginSample = beginSample
+                    if beginSample is not None:
+                        byteObj.beginSample = beginSample
+                    else:
+                        byteObj.beginSample = 0
+
+
+
                     byteObj.beginCluster = frameBeginIdx
-                    byteObj.endSample = bitCluster.beginSample + bitCluster.length - 1  # Aqui é onde atualizamos endSample
+                    if bitCluster.beginSample is not None:
+                        byteObj.endSample = bitCluster.beginSample + bitCluster.length - 1
+                    else:
+                        byteObj.endSample = 0 + bitCluster.length - 1
 
                     outputBytes.append(byteObj)
                     byte = ""

@@ -4,7 +4,7 @@ from PeakFinder import PeakFinder
 decoder = UartDecoder('./test-exp1.wav')
 utils = PeakFinder()
 
-confidence = 95
+confidence = 99
 min_percent_over_threshold = 25
 peaks = utils.find_peaks(decoder.left_channel,confidence,min_percent_over_threshold)
 #print("peaks:",peaks)
