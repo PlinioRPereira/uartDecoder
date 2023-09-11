@@ -1,6 +1,5 @@
 import wave
 import numpy as np
-import matplotlib.pyplot as plt
 
 class UartDecoder:
     def __init__(self, file_path, threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=20000):
