@@ -1,5 +1,5 @@
-import wave
 import numpy as np
+import datetime
 
 portuguese_chars = [
     # Alfabeto básico
@@ -23,7 +23,6 @@ portuguese_chars = [
     '”', '‘', '#'
 ]
 
-
 class PeakFinder:
 
     def calculate_thresholds(self, audio_signal, confidence=95):
@@ -33,7 +32,15 @@ class PeakFinder:
         min_threshold = np.percentile(audio_signal, beta)
         return max_threshold, min_threshold
 
-    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10):
+    def get_peak_time(self, sampleIdx, sampleRate)
+        samplePeriod = 1/sampleRate
+        rawTimeValue = sampleIdx * sampleRate
+        segundos = int(rawTimeValue)
+        milisegundos = int((rawTimeValue - segundos) * 1000)
+        time = datetime.timedelta(seconds=segundos, milliseconds=milisegundos)
+        return time
+
+    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):   
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
         peak_intervals = []
@@ -56,13 +63,15 @@ class PeakFinder:
                 # No 'else' needed here since 'peak_start' will only be None at the beginning
             elif peak_start is not None:
                 peak_end = i - 1
-                peak_intervals.append([peak_start, peak_end, diff, percent_over])
+                peak_start_time = self.get_peak_time(peak_start, sampleRate)
+                peak_end_time = self.get_peak_time(peak_end, sampleRate)
+                peak_intervals.append([peak_start, peak_end, diff, percent_over, peak_start_time, peak_end_time])
                 peak_start = None
                 peak_value = None
 
         return peak_intervals
 
-    def find_intersection(self,peaks, decoded_data):
+    def find_intersection(self, peaks, decoded_data):
         intersected_data = []
 
         for peak in peaks:
