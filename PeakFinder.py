@@ -1,6 +1,7 @@
 import numpy as np
 import numpy as np
 from scipy.fftpack import fft
+import copy
 
 portuguese_chars = [
     # Alfabeto básico
@@ -42,16 +43,43 @@ class PeakFinder:
         # time = datetime.timedelta(seconds=segundos, milliseconds=milisegundos)
         return rawTimeValue
 
-    def format_peaks(self,peaks):
+    def format_peak(self, i, peak):
+        start_time = "{:.4f}s".format(peak[4])
+        end_time = "{:.4f}s".format(peak[5])
+        percent_over = "{:.2f}%".format(peak[3])
+
+        # Verificar se start_time é igual a end_time
+        if start_time == end_time:
+            time_str = start_time  # Mostre apenas start_time
+        else:
+            time_str = f"{start_time} - {end_time}"
+
+        formatted_peak = [
+            f'Pico {i + 1}',
+            percent_over,
+            time_str
+        ]
+
+        return formatted_peak
+    def format_peaks(self, peaks):
         formatted_peaks = []
         for i, peak in enumerate(peaks):
-            start_time = "{:.4f}".format(peak[4])
-            end_time = "{:.4f}".format(peak[5])
+            start_time = "{:.4f}s".format(peak[4])
+            end_time = "{:.4f}s".format(peak[5])
+            percent_over = "{:.2f}%".format(peak[3])
+
+            # Verificar se start_time é igual a end_time
+            if start_time == end_time:
+                time_str = start_time  # Mostre apenas start_time
+            else:
+                time_str = f"{start_time} - {end_time}"
+
             formatted_peak = [
                 f'Pico {i + 1}',
-                start_time,
-                end_time
+                percent_over,
+                time_str
             ]
+
             formatted_peaks.append(formatted_peak)
         return formatted_peaks
 
@@ -137,22 +165,26 @@ class PeakFinder:
                     freq_value = dominant_frequency
 
         return frequency_intervals
-    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
+    def find_peaks_region(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
         peak_intervals = []
         peak_start = None
         peak_value = None
+        max_percent_over = 0
 
-        print("find_peaks:", max_threshold,min_threshold)
+        print("Threshold:", max_threshold,min_threshold)
 
         for i, sample in enumerate(audio_signal):
             is_peak = False
+
 
             # Check for positive peaks
             if sample > max_threshold:
                 diff = abs(sample - max_threshold)
                 percent_over = (diff / max_threshold) * 100
+                if max_percent_over < percent_over:
+                    max_percent_over = percent_over
                 if percent_over >= min_percent_over_threshold:
                     is_peak = True
 
@@ -160,6 +192,8 @@ class PeakFinder:
             elif sample < min_threshold:
                 diff = abs(sample - min_threshold)
                 percent_over = abs((diff / min_threshold)) * 100
+                if max_percent_over < percent_over:
+                    max_percent_over = percent_over
                 if percent_over >= min_percent_over_threshold:
                     is_peak = True
 
@@ -172,19 +206,73 @@ class PeakFinder:
                 peak_end = i - 1
                 peak_start_time = self.get_peak_time(peak_start, sampleRate)
                 peak_end_time = self.get_peak_time(peak_end, sampleRate)
-                peak_intervals.append([peak_start, peak_end, diff, percent_over, peak_start_time, peak_end_time])
+                peak_intervals.append([peak_start, peak_end, diff, max_percent_over, peak_start_time, peak_end_time])
                 peak_start = None
                 peak_end = None
                 peak_start_time = None
                 peak_end_time = None
                 peak_value = None
+                max_percent_over = 0
+
+        return peak_intervals
+    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
+        max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
+
+        peak_intervals = []
+        peak_start = None
+        peak_value = None
+        max_percent_over = 0
+        max_percent_over_time = 0
+
+        print("Threshold:", max_threshold,min_threshold)
+
+        for i, sample in enumerate(audio_signal):
+            is_peak = False
+
+
+            # Check for positive peaks
+            if sample > max_threshold:
+                diff = abs(sample - max_threshold)
+                percent_over = (diff / max_threshold) * 100
+                if max_percent_over < percent_over:
+                    max_percent_over = percent_over
+                    max_percent_over_time = i
+                if percent_over >= min_percent_over_threshold:
+                    is_peak = True
+
+            # Check for negative peaks
+            elif sample < min_threshold:
+                diff = abs(sample - min_threshold)
+                percent_over = abs((diff / min_threshold)) * 100
+                if max_percent_over < percent_over:
+                    max_percent_over = percent_over
+                    max_percent_over_time = i
+                if percent_over >= min_percent_over_threshold:
+                    is_peak = True
+
+            if is_peak:
+                if peak_start is None:
+                    peak_start = i
+                    peak_value = sample
+                # No 'else' needed here since 'peak_start' will only be None at the beginning
+            elif peak_start is not None:
+                peak_end = i - 1
+                peak_start_time = self.get_peak_time(max_percent_over_time, sampleRate)
+                peak_end_time = self.get_peak_time(max_percent_over_time, sampleRate)
+                peak_intervals.append([peak_start, peak_end, diff, max_percent_over, peak_start_time, peak_end_time])
+                peak_start = None
+                peak_end = None
+                peak_start_time = None
+                peak_end_time = None
+                peak_value = None
+                max_percent_over = 0
 
         return peak_intervals
 
     def find_intersection(self, peaks, decoded_data):
         intersected_data = []
 
-        for peak in peaks:
+        for i, peak in enumerate(peaks):
             peak_start, peak_end = peak[0], peak[1]
 
             for data in decoded_data:
@@ -196,14 +284,33 @@ class PeakFinder:
 
                 # Verifica a interseção entre os intervalos de pico e dados
                 if data_start <= peak_end and data_end >= peak_start:
-                    intersected_data.append(data)
+                    data_copy = copy.copy(data)
+                    data_copy.peak = self.format_peak(i, peak)
+                    intersected_data.append(data_copy)
 
         return intersected_data
+
+    def printtable(self, byteObjArray):
+        print(
+            "{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}".format('BIN', 'NUM', 'CHR(GRAY)', 'CHR(BIN)', 'MAP(PT_BR)', 'PICO', '%',
+                                                                          'TEMPO'))
+
+        for byte in byteObjArray:
+            print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}".format(
+                byte.binaryStr,
+                byte.value,
+                chr(byte.value),
+                chr(int(byte.binaryStr, 2)),
+                portuguese_chars[byte.value % len(portuguese_chars)],
+                byte.peak[0],
+                f"{byte.peak[1]}%",
+                f"{byte.peak[2]}s"
+            ))
 
     def printByteObjArray(self,byteObjArray):
         for byte in byteObjArray:
             print("{",
-                  f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample}, endSample={byte.endSample}, beginCluster={byte.beginCluster}",
+                  f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample},peak={byte.peak[0]}, endSample={byte.endSample}, beginCluster={byte.beginCluster}",
                   "}")
 
     # Método para extrair a sequência de caracteres da propriedade "chr"
