@@ -9,11 +9,11 @@ utils = PeakFinder()
 
 for iteracao in range(1, 6):
     confidence = 100-iteracao
-    min_percent_over_threshold = 40
+    min_percent_over_threshold = 45
     peaks = utils.find_peaks(decoder.left_channel,confidence,min_percent_over_threshold)
     print("Total de Picos:", len(peaks) )
-    # formatedPeaks = utils.format_peaks(peaks)
-    # print("peaks:",formatedPeaks)
+    formatedPeaks = utils.format_peaks(peaks)
+    print("Lista de Picos:",formatedPeaks)
     # Decodificar os dados
 
     selectedBytes = utils.find_intersection(peaks, decoded_data)
