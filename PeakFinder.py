@@ -269,6 +269,22 @@ class PeakFinder:
 
         return peak_intervals
 
+    def filter_peaks(self, peak_intervals, x):
+        if not peak_intervals:
+            return []
+
+        # Encontrar o menor e o maior valor de max_percent_over
+        min_percent = min(peak[3] for peak in peak_intervals)
+        max_percent = max(peak[3] for peak in peak_intervals)
+
+        # Calcular o novo limite
+        new_threshold = min_percent + (max_percent - min_percent) * x
+
+        # Filtrar a lista de picos
+        filtered_peaks = [peak for peak in peak_intervals if peak[3] > new_threshold]
+
+        return filtered_peaks
+
     def find_intersection(self, peaks, decoded_data):
         intersected_data = []
 
