@@ -299,7 +299,7 @@ class UartDecoder:
 
         return outputBytes
 
-    def print_bit_cluster_array(self,array):
+    def print_bit_cluster_array(self, array):
         for index, bit_cluster in enumerate(array):
             print("{",
                     f"{index}, value={bit_cluster.value}, length={bit_cluster.length}, samplesQtd={bit_cluster.samplesQtd}, rest={bit_cluster.rest}",
@@ -375,8 +375,7 @@ class UartDecoder:
         # print_bit_cluster_array(uartBitClusterArray)
 
         decoded_data = self.uartDecode(uartBitClusterArray)
-      
+
         return decoded_data
 
-    def getMessageHeader(self):
-        data = 1
+        
