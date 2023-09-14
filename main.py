@@ -1,7 +1,7 @@
 from UartDecoder import UartDecoder
 from PeakFinder import PeakFinder
 
-audioPath = './test-exp2.wav'
+audioPath = './test/test-exp2.wav'
 
 decoder = UartDecoder(audioPath)
 print("Anaĺisando o arquivo ",audioPath)

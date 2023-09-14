@@ -1,5 +1,4 @@
 import numpy as np
-import numpy as np
 from scipy.fftpack import fft
 import copy
 
