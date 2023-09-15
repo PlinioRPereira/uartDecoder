@@ -58,29 +58,32 @@ class GPSSensor:
         peak_start = None
         peak_value = None
         max_percent_over = 0
+        max_percent_over_time = 0
         diff = 0
 
-        print("Threshold:", max_threshold,min_threshold)
+        # print("Threshold:", max_threshold,min_threshold)
 
         for i, sample in enumerate(gps_signal):
             is_peak = False
 
 
             # Check for positive peaks
-            if sample > max_threshold:
+            if sample > max_threshold and max_threshold != 0:
                 diff = abs(sample - max_threshold)
                 percent_over = (diff / max_threshold) * 100
                 if max_percent_over < percent_over:
                     max_percent_over = percent_over
+                    max_percent_over_time = i
                 if percent_over >= min_percent_over_threshold:
                     is_peak = True
 
             # Check for negative peaks
-            elif sample < min_threshold:
+            elif sample < min_threshold and min_threshold != 0:
                 diff = abs(sample - min_threshold)
                 percent_over = abs((diff / min_threshold)) * 100
                 if max_percent_over < percent_over:
                     max_percent_over = percent_over
+                    max_percent_over_time = i
                 if percent_over >= min_percent_over_threshold:
                     is_peak = True
 
@@ -91,7 +94,8 @@ class GPSSensor:
                 # No 'else' needed here since 'peak_start' will only be None at the beginning
             elif peak_start is not None:
                 peak_end = i - 1
-                peak_intervals.append([peak_start, peak_end, diff, max_percent_over])
+                max_peak_position = max_percent_over_time
+                peak_intervals.append([peak_start, peak_end,max_peak_position, diff, max_percent_over])
                 peak_start = None
                 peak_end = None
                 peak_value = None
@@ -323,3 +327,20 @@ class GPSSensor:
     def stopSensor(self):
         self.active = None
         print('STOP')
+
+    def printResultTable(self, title, byteObjArray, timestampList):
+        # Imprimir o título
+        print(f"Table Title: {title}\n")
+
+        # Imprimir o cabeçalho da tabela
+        print("{:<10} {:<20} {:<20} {:<15}".format('POS', 'VAL', '%', 'TIME'))
+
+        # Imprimir os dados da tabela
+        for i, obj in enumerate(byteObjArray):
+            print("{:<10} {:<20} {:<20} {:<15}".format(
+                obj[2],
+                obj[3],
+                f"{obj[4]}%",
+                timestampList[obj[2]]
+            ))
+
