@@ -58,8 +58,8 @@ class PeakFinder:
             percent_over,
             time_str
         ]
-
         return formatted_peak
+    
     def format_peaks(self, peaks):
         formatted_peaks = []
         for i, peak in enumerate(peaks):
@@ -78,8 +78,8 @@ class PeakFinder:
                 percent_over,
                 time_str
             ]
-
             formatted_peaks.append(formatted_peak)
+        
         return formatted_peaks
 
     def find_harmonic_variations(self, audio_signal, sampleRate=44100, percent_threshold=10):
@@ -164,6 +164,7 @@ class PeakFinder:
                     freq_value = dominant_frequency
 
         return frequency_intervals
+    
     def find_peaks_region(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
@@ -214,6 +215,7 @@ class PeakFinder:
                 max_percent_over = 0
 
         return peak_intervals
+    
     def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
@@ -308,7 +310,7 @@ class PeakFinder:
     def printtable(self, byteObjArray):
         print(
             "{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}".format('BIN', 'NUM', 'CHR(GRAY)', 'CHR(BIN)', 'MAP(PT_BR)', 'PICO', '%',
-                                                                          'TEMPO'))
+                                                                            'TEMPO'))
 
         for byte in byteObjArray:
             print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}".format(
@@ -325,8 +327,8 @@ class PeakFinder:
     def printByteObjArray(self,byteObjArray):
         for byte in byteObjArray:
             print("{",
-                  f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample},peak={byte.peak[0]}, endSample={byte.endSample}, beginCluster={byte.beginCluster}",
-                  "}")
+                    f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample},peak={byte.peak[0]}, endSample={byte.endSample}, beginCluster={byte.beginCluster}",
+                    "}")
 
     # Método para extrair a sequência de caracteres da propriedade "chr"
     def extractChrSequence(self,byteObjArray):

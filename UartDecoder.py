@@ -320,7 +320,7 @@ class UartDecoder:
 
         channelRawValues = np.array(channelRawValues) * -1 if invertSignal        # Hardware reception is inverted, this fix this behavior
 
-        binaryData = self.binarize(channelRawValues)  # Exemplo de limiar
+        self.binaryData = self.binarize(channelRawValues)  # Exemplo de limiar
 
         windowStart, windowEnd = self.findTransmitionWindow(binaryData)
         # print("window_start:", window_start)

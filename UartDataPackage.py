@@ -4,11 +4,6 @@
 # Falling Gray sequence is a sequency of the numbers 254 to 0 in gray code 
 import struct
 
-# Exemplo de uso:
-array_de_bytes = b'\x01\x02\x03\x04'  # Um array de 4 bytes
-numero = bytes_para_int(array_de_bytes)
-print(numero)  # Saída: 16909060
-
 class UartDataPackage:
 
     def bytesToInt(self, byteArray):
