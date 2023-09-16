@@ -29,6 +29,7 @@ class GPSSensor:
     def __init__(self):
         self.refDate = None
         self.transformed_data_array = []
+        self.data_array = []
         self.active = None
 
     def calculate_magnitude(self,x, y, z):
@@ -292,10 +293,14 @@ class GPSSensor:
     # Function to handle reading from the sensor
     def read_from_port(self,ser,onData,timeout):
         start_time = time.time()
+        progressCount = 0
 
         while True:
             elapsed_time = time.time() - start_time
-
+            progress = math.floor((elapsed_time/timeout)*100);
+            if progress!=progressCount:
+                progressCount = progress;
+                print(progress,'%')
             if self.active is None or elapsed_time >timeout:
                 break
 
@@ -303,6 +308,7 @@ class GPSSensor:
             if reading:
                 parsed_data = self.parseSensorData(reading)
                 if parsed_data:
+                    self.data_array.append(parsed_data)
                     transformed_data = self.transform_data(parsed_data)
                     if onData and callable(onData):
                         onData(transformed_data)
@@ -320,7 +326,7 @@ class GPSSensor:
         thread.start()
         thread.join()  # Espera a thread terminar
         if onStop and callable(onStop):
-            onStop(self.transformed_data_array)
+            onStop(self.transformed_data_array,self.data_array)
 
 
 
@@ -328,19 +334,20 @@ class GPSSensor:
         self.active = None
         print('STOP')
 
-    def printResultTable(self, title, byteObjArray, timestampList):
+    def printResultTable(self, title, byteObjArray, timestampList,min_percent_over_threshold):
         # Imprimir o título
         print(f"Table Title: {title}\n")
 
         # Imprimir o cabeçalho da tabela
-        print("{:<10} {:<20} {:<20} {:<15}".format('POS', 'VAL', '%', 'TIME'))
+        print("{:<10} {:<20} {:<20} {:<20} {:<10}".format('POS', 'VAL', '%', 'TIME','ACT-VAL'))
 
         # Imprimir os dados da tabela
         for i, obj in enumerate(byteObjArray):
-            print("{:<10} {:<20} {:<20} {:<15}".format(
+            print("{:<10} {:<20} {:<20} {:<20} {:<10}".format(
                 obj[2],
                 obj[3],
                 f"{obj[4]}%",
-                timestampList[obj[2]]
+                timestampList[obj[2]],
+                math.floor((obj[4]/min_percent_over_threshold)-1),
             ))
 

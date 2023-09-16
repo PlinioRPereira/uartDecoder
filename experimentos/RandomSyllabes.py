@@ -55,15 +55,15 @@ class RandomSyllabes:
 
         return random_syllables
 
-    def generate(self,list,timestampList):
+    def generate(self,list,timestampList,min_percent_over_threshold):
         for item in list:
-            sil = self.get_random_syllables(timestampList[item[2]], 0,
-                                               self.extract_date_parts(timestampList[item[2]])[5])
+            sil = self.get_random_syllables2(item[2], item[4], 0, 12)
             print(''.join(sil))
 
-    def generate2(self,list,timestampList):
+    def generate2(self,list,timestampList,min_percent_over_threshold):
         for item in list:
-            sil = self.get_random_syllables2(item[3], item[4], 0, self.extract_date_parts(timestampList[item[2]])[5])
+            sil = self.get_random_syllables(item[2], 0,
+                                               self.extract_date_parts(timestampList[item[2]])[5])
             print(''.join(sil))
 
 
