@@ -60,7 +60,7 @@ def onData(data):
     return
     # print('Data:',data)
 
-timeout = 5
+timeout = 10
 
 def main():
     global timeout

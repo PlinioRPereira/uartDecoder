@@ -294,6 +294,7 @@ class GPSSensor:
     def read_from_port(self,ser,onData,timeout):
         start_time = time.time()
         progressCount = 0
+        initied = False
 
         while True:
             elapsed_time = time.time() - start_time
@@ -307,7 +308,7 @@ class GPSSensor:
             reading = ser.read(33)
             if reading:
                 parsed_data = self.parseSensorData(reading)
-                if parsed_data:
+                if parsed_data and parsed_data[0]!=0 and parsed_data[1]!=0 and parsed_data[2]!=0:
                     self.data_array.append(parsed_data)
                     transformed_data = self.transform_data(parsed_data)
                     if onData and callable(onData):
