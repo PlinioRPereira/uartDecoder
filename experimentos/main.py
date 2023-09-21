@@ -47,7 +47,7 @@ def onStop(data,sensorData):
     valoresTimestamp = [subarray[4] for subarray in data]
 
     confidence = 75
-    min_percent_over_threshold = 0.3
+    min_percent_over_threshold = 0.35
     fator_filtro = 0.75
 
     logs = {
