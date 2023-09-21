@@ -56,9 +56,13 @@ class RandomSyllabes:
         return random_syllables
 
     def generate(self,list,timestampList,min_percent_over_threshold):
+        textList = []
         for item in list:
-            sil = self.get_random_syllables2(item[2], item[4], 0, 12)
+            sil = self.get_random_syllables2(item[2], item[4], 0, 3)
             print(''.join(sil))
+            textList.append(''.join(sil))
+
+        return textList
 
     def generate2(self,list,timestampList,min_percent_over_threshold):
         for item in list:
