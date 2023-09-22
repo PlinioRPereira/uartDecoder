@@ -78,8 +78,8 @@ def periodic_task():
     while isRun:
         if len(data)==0:
             continue  # Pula para a próxima iteração do loop
-        print('Finalizando contato e iniciando análise')
-        print(f"Tamanho do array após {timeout} segundos: {len(data)}")
+        # print('Finalizando contato e iniciando análise')
+        # print(f"Tamanho do array após {timeout} segundos: {len(data)}")
         valoresAcelerometro = [subarray[0] for subarray in data]
         valoresGiroscopio = [subarray[1] for subarray in data]
         valoresInclinometro = [subarray[2] for subarray in data]
@@ -87,7 +87,7 @@ def periodic_task():
         valoresTimestamp = [subarray[4] for subarray in data]
 
         confidence = 75
-        min_percent_over_threshold = 0.9
+        min_percent_over_threshold = 0.50
         fator_filtro = 0.75
 
         peaksAcelerometro = gpsSensor.find_peaks(valoresAcelerometro, confidence, min_percent_over_threshold)
@@ -96,7 +96,7 @@ def periodic_task():
                 filtered_peaksAcelerometro) > 0:
             gpsSensor.printResultTable("Acelerômetro", filtered_peaksAcelerometro, valoresTimestamp,
                                        min_percent_over_threshold)
-            listText = randomSyllabes.generate(filtered_peaksAcelerometro, valoresTimestamp, min_percent_over_threshold)
+            listText = randomSyllabes.generate(filtered_peaksAcelerometro, valoresTimestamp, 440) #Lá
             play_lista_de_texto(listText, 'Acelerômetro')
 
         peaksGiroscopio = gpsSensor.find_peaks(valoresGiroscopio, confidence, min_percent_over_threshold)
@@ -106,7 +106,7 @@ def periodic_task():
                 filtered_peaksGiroscopio) > 0:
             gpsSensor.printResultTable("Giroscópio", filtered_peaksGiroscopio, valoresTimestamp,
                                        min_percent_over_threshold)
-            listText = randomSyllabes.generate(filtered_peaksGiroscopio, valoresTimestamp, min_percent_over_threshold)
+            listText = randomSyllabes.generate(filtered_peaksGiroscopio, valoresTimestamp, 523.25) #Dó
             play_lista_de_texto(listText, 'Giroscópio')
 
         peaksInclinometro = gpsSensor.find_peaks(valoresInclinometro, confidence, min_percent_over_threshold)
@@ -116,7 +116,7 @@ def periodic_task():
                 filtered_peaksInclinometro) > 0:
             gpsSensor.printResultTable("Inclinômetro", filtered_peaksInclinometro, valoresTimestamp,
                                        min_percent_over_threshold)
-            listText = randomSyllabes.generate(filtered_peaksInclinometro, valoresTimestamp, min_percent_over_threshold)
+            listText = randomSyllabes.generate(filtered_peaksInclinometro, valoresTimestamp, 587.33) #RÉ
             play_lista_de_texto(listText, 'Inclinômetro')
 
         peaksMagnetometro = gpsSensor.find_peaks(valoresMagnetometro, confidence, min_percent_over_threshold)
@@ -126,10 +126,10 @@ def periodic_task():
                 filtered_peaksMagnetometro) > 0:
             gpsSensor.printResultTable("Magnetômetro", filtered_peaksMagnetometro, valoresTimestamp,
                                        min_percent_over_threshold)
-            listText = randomSyllabes.generate(filtered_peaksMagnetometro, valoresTimestamp, min_percent_over_threshold)
+            listText = randomSyllabes.generate(filtered_peaksMagnetometro, valoresTimestamp, 659.25) #Mi
             play_lista_de_texto(listText, 'Magnetômetro')
 
-
+        data.clear()
         time.sleep(2)  # Aguarde um segundo antes de executar novamente
 
 

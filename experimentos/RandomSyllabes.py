@@ -27,10 +27,28 @@ class RandomSyllabes:
 
         return date_parts
 
-    def get_random_syllables(self,seed, start, end):
+    def pseudoRandom(self,seed):
+        seed += 1
+        x = math.sin(seed) * 10000
+        return x - math.floor(x)
+
+    def get_simple_random_syllables(self,seed1,start, end):
+
+        # Gera uma lista aleatória de sílabas
+        random_syllables = []
+        for i in range(start, end):
+            num = self.pseudoRandom(seed1+i)
+            index = math.floor(num*(len(syllables)-1) )
+            random_syllables.append(syllables[index])
+
+        return random_syllables
+
+
+
+    def get_random_syllables(self,seed,note, start, end):
 
         # Inicializa o gerador de números aleatórios com a semente dada
-        mwc_gen = MWC(seed, 123321)
+        mwc_gen = MWC(seed, note)
 
         # Gera uma lista aleatória de sílabas
         random_syllables = []
@@ -40,6 +58,9 @@ class RandomSyllabes:
             random_syllables.append(syllables[index])
 
         return random_syllables
+
+
+
 
     def get_random_syllables2(self,seed1, seed2,start, end):
 
@@ -55,7 +76,15 @@ class RandomSyllabes:
 
         return random_syllables
 
-    def generate(self,list,timestampList,min_percent_over_threshold):
+    def generate(self,list,timestampList,note):
+        textList = []
+        for item in list:
+            sil = self.get_random_syllables(item[2],note, 0, 1)
+            textList.append(''.join(sil))
+
+        print(''.join(textList))
+        return textList
+    def generate3(self,list,timestampList,min_percent_over_threshold):
         textList = []
         for item in list:
             sil = self.get_random_syllables2(item[2], item[4], 0, 3)
