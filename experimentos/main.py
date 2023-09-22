@@ -18,8 +18,8 @@ def play_lista_de_texto(lista,sensorName):
         data_atual = datetime.datetime.now().isoformat()
         arquivo_wav = f"{data_atual}.wav"
 
-        comandoAudio = f"espeak '{mensagem}' -v pt-br -s 100"
-        comando = f"espeak '{mensagem}' -v pt-br -s 100 -w {arquivo_wav}"
+        comandoAudio = f"espeak '{mensagem}' -v mb-br3 -s 120"
+        comando = f"espeak '{mensagem}' -v mb-br3 -s 120 -w ./contatos/{arquivo_wav}"
 
         try:
             subprocess.run(comando, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

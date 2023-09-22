@@ -35,8 +35,8 @@ def play_lista_de_texto(lista,sensorName):
         data_atual = datetime.datetime.now().isoformat()
         arquivo_wav = f"{data_atual}_{sensorName}.wav"
 
-        comandoAudio = f"espeak '{mensagem}' -v pt-br -s 100"
-        comando = f"espeak '{mensagem}' -v pt-br -s 100 -w ./{contatoDir}/{arquivo_wav}"
+        comandoAudio = f"espeak '{mensagem}' -v mb-br2 -s 80"
+        comando = f"espeak '{mensagem}' -v mb-br2 -s 80 -w ./{contatoDir}/{arquivo_wav}"
 
         try:
             subprocess.run(comando, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -87,7 +87,7 @@ def periodic_task():
         valoresTimestamp = [subarray[4] for subarray in data]
 
         confidence = 75
-        min_percent_over_threshold = 0.4
+        min_percent_over_threshold = 0.9
         fator_filtro = 0.75
 
         peaksAcelerometro = gpsSensor.find_peaks(valoresAcelerometro, confidence, min_percent_over_threshold)
@@ -134,7 +134,7 @@ def periodic_task():
 
 
 # Instancie a classe que contém os métodos de encontrar e filtrar picos
-timeout = 60
+timeout = 5*60  #5x60s = 5min
 def sensor_task():
     gpsSensor.startSensor(onStart, onData, onStop, timeout)
     print("Sensor iniciado")
