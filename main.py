@@ -28,6 +28,9 @@ def decodeDataAroundPeaks(peaks, signalLength, samplesQtdBeforePeak = 1000, samp
 
     return result, totalBytesSelected
 
+# TODO
+# For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, two peaks have the position at 19.83s
+# For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, peaks at 47.4130 and 2:427090 weren't find
 for iteracao in range(1, 2):
     confidence = 96-iteracao
     min_percent_over_threshold = 45
@@ -35,12 +38,13 @@ for iteracao in range(1, 2):
     
     allPeaks = utils.find_peaks(decoder.left_channel, confidence, min_percent_over_threshold)
 
-    peaks = utils.filter_peaks(allPeaks, filterFactor)
+    # peaks = utils.filter_peaks(allPeaks, filterFactor)
 
     print("----------------------------------------------------------------------------")
     print("ITERAÇAO ", iteracao)
-    print("Total de Picos:", len(peaks) )
-    utils.printPeaks(peaks) 
+    print("Total de Picos:", len(allPeaks) )
+    # print(allPeaks) 
+    utils.printPeaks(allPeaks) 
     print("\n")
     
     # formatedPeaks = utils.format_peaks(peaks)

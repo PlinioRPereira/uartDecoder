@@ -24,11 +24,13 @@ portuguese_chars = [
     '”', '‘', '#'
 ]
 
-class PeakFinder:
+class PeakFinder:    
+    PeakStruct = type("PeakStruct", (),
+        {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None })
 
     def calculate_thresholds(self, audio_signal, confidence=95):
-        alpha = 100 - (100 - confidence) / 2
-        beta = (100 - confidence) / 2
+        alpha = 100 - (100 - confidence) / 2  #Eg. 97,5
+        beta = (100 - confidence) / 2         #Eg. 2.5  
         max_threshold = np.percentile(audio_signal, alpha)
         min_threshold = np.percentile(audio_signal, beta)
         return max_threshold, min_threshold
@@ -168,7 +170,7 @@ class PeakFinder:
     def find_peaks_region(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
-        peak_intervals = []
+        peakIntervals = []
         peak_start = None
         peak_value = None
         max_percent_over = 0
@@ -206,7 +208,7 @@ class PeakFinder:
                 peak_end = i - 1
                 peak_start_time = self.get_peak_time(peak_start, sampleRate)
                 peak_end_time = self.get_peak_time(peak_end, sampleRate)
-                peak_intervals.append([peak_start, peak_end, diff, max_percent_over, peak_start_time, peak_end_time])
+                peakIntervals.append([peak_start, peak_end, diff, max_percent_over, peak_start_time, peak_end_time])
                 peak_start = None
                 peak_end = None
                 peak_start_time = None
@@ -214,30 +216,25 @@ class PeakFinder:
                 peak_value = None
                 max_percent_over = 0
 
-        return peak_intervals
+        return peakIntervals
     
     def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
-        peak_intervals = []
+        peakArray = []
         peak_start = None
-        peak_value = None
         max_percent_over = 0
-        max_percent_over_time = 0
+        max_percent_over_sample = 0
 
-        print("Threshold:", max_threshold,min_threshold)
+        print("Threshold:", max_threshold, min_threshold)
 
         for i, sample in enumerate(audio_signal):
             is_peak = False
-
 
             # Check for positive peaks
             if sample > max_threshold:
                 diff = abs(sample - max_threshold)
                 percent_over = (diff / max_threshold) * 100
-                if max_percent_over < percent_over:
-                    max_percent_over = percent_over
-                    max_percent_over_time = i
                 if percent_over >= min_percent_over_threshold:
                     is_peak = True
 
@@ -245,44 +242,46 @@ class PeakFinder:
             elif sample < min_threshold:
                 diff = abs(sample - min_threshold)
                 percent_over = abs((diff / min_threshold)) * 100
-                if max_percent_over < percent_over:
-                    max_percent_over = percent_over
-                    max_percent_over_time = i
                 if percent_over >= min_percent_over_threshold:
                     is_peak = True
 
+            if (sample < min_threshold or sample > max_threshold) and max_percent_over < percent_over:                
+                max_percent_over = percent_over
+                max_percent_over_sample = i
+
             if is_peak:
                 if peak_start is None:
-                    peak_start = i
-                    peak_value = sample
-                # No 'else' needed here since 'peak_start' will only be None at the beginning
+                    peak_start = i                    
+
             elif peak_start is not None:
-                peak_end = i - 1
-                peak_start_time = self.get_peak_time(max_percent_over_time, sampleRate)
-                peak_end_time = self.get_peak_time(max_percent_over_time, sampleRate)
-                peak_intervals.append([peak_start, peak_end, diff, max_percent_over, peak_start_time, peak_end_time])
+                peak = self.PeakStruct() 
+                peak.start = peak_start
+                peak.end = i - 1
+                peak.diff = diff
+                peak.maxValuePercentual = max_percent_over
+                peak.maxValueTime = self.get_peak_time(max_percent_over_sample, sampleRate) 
+                peak.startTime = self.get_peak_time(peak_start, sampleRate)
+                peak.endTime = self.get_peak_time(peak.end, sampleRate)
+                peakArray.append(peak)
+
                 peak_start = None
-                peak_end = None
-                peak_start_time = None
-                peak_end_time = None
-                peak_value = None
                 max_percent_over = 0
 
-        return peak_intervals
+        return peakArray
 
-    def filter_peaks(self, peak_intervals, x):
-        if not peak_intervals:
+    def filter_peaks(self, peakIntervals, x):
+        if not peakIntervals:
             return []
 
         # Encontrar o menor e o maior valor de max_percent_over
-        min_percent = min(peak[3] for peak in peak_intervals)
-        max_percent = max(peak[3] for peak in peak_intervals)
+        min_percent = min(peak[3] for peak in peakIntervals)
+        max_percent = max(peak[3] for peak in peakIntervals)
 
         # Calcular o novo limite
         new_threshold = min_percent + (max_percent - min_percent) * x
 
         # Filtrar a lista de picos
-        filtered_peaks = [peak for peak in peak_intervals if peak[3] > new_threshold]
+        filtered_peaks = [peak for peak in peakIntervals if peak[3] > new_threshold]
 
         return filtered_peaks
 
@@ -323,17 +322,18 @@ class PeakFinder:
                 f"{byte.peak[1]}%",
                 f"{byte.peak[2]}s"
             ))
-
+            
     def printPeaks(self, peakArray):        
-        print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15}".format('start', 'end', 'diff', 'peak (%)', 'start time', 'stop time'))
+        print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15}".format('start', 'end', 'diff', 'peak (%)', 'maxPeak Time', 'start time', 'stop time'))
         for peak in peakArray:
-            print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15}".format(
-                peak[0],
-                peak[1],
-                peak[2],
-                round(peak[3], 2),
-                round(peak[4], 6),
-                round(peak[5], 6)
+            print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15}".format(
+                peak.start,
+                peak.end,
+                peak.diff,
+                round(peak.maxValuePercentual, 2),
+                round(peak.maxValueTime, 6),                
+                round(peak.startTime, 6),
+                round(peak.endTime, 6)
             ))
 
     def printByteObjArray(self,byteObjArray):
