@@ -1,7 +1,7 @@
 from UartDecoder import UartDecoder
 from PeakFinder import PeakFinder
 
-audioPath = './test/test-exp1.wav'
+audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
 
 decoder = UartDecoder(audioPath)
 print("Analisando o arquivo ", audioPath)
@@ -28,7 +28,7 @@ def decodeDataAroundPeaks(peaks, signalLength, samplesQtdBeforePeak = 1000, samp
 
     return result, totalBytesSelected
 
-for iteracao in range(1, 6):
+for iteracao in range(1, 2):
     confidence = 96-iteracao
     min_percent_over_threshold = 45
     filterFactor = 0.75
@@ -40,19 +40,21 @@ for iteracao in range(1, 6):
     print("----------------------------------------------------------------------------")
     print("ITERAÇAO ", iteracao)
     print("Total de Picos:", len(peaks) )
+    utils.printPeaks(peaks) 
+    print("\n")
     
     # formatedPeaks = utils.format_peaks(peaks)
     # print("Lista de Picos:",formatedPeaks)
     # Decodificar os dados
 
-    result, totalBytesSelected = decodeDataAroundPeaks(peaks)
+    # result, totalBytesSelected = decodeDataAroundPeaks(peaks)
 
-    print(f"Iteração {iteracao}: foram selecionados {totalBytesSelected} bytes da sequencia de Gray, considerando a confiança de {confidence}% e um valor de pico acima de {min_percent_over_threshold}% do limiar (max e min), com um fator de filtro de {filterFactor}")
-    utils.printtable(result.selectedBytes)
-    print('BIN:',utils.extractBinarySequence(result.selectedBytes))
-    print('CHAR(Gray):',utils.extractChrSequence(result.selectedBytes))
-    print('CHAR(BIN):',utils.extractChar2Sequence(result.selectedBytes))
-    print('CHAR(PT-BR):',utils.extractPortugueseSequence(result.selectedBytes))
+    # print(f"Iteração {iteracao}: foram selecionados {totalBytesSelected} bytes da sequencia de Gray, considerando a confiança de {confidence}% e um valor de pico acima de {min_percent_over_threshold}% do limiar (max e min), com um fator de filtro de {filterFactor}")
+    # utils.printtable(result.selectedBytes)
+    # print('BIN:',utils.extractBinarySequence(result.selectedBytes))
+    # print('CHAR(Gray):',utils.extractChrSequence(result.selectedBytes))
+    # print('CHAR(BIN):',utils.extractChar2Sequence(result.selectedBytes))
+    # print('CHAR(PT-BR):',utils.extractPortugueseSequence(result.selectedBytes))
 
 
 

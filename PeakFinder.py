@@ -324,6 +324,18 @@ class PeakFinder:
                 f"{byte.peak[2]}s"
             ))
 
+    def printPeaks(self, peakArray):        
+        print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15}".format('start', 'end', 'diff', 'peak (%)', 'start time', 'stop time'))
+        for peak in peakArray:
+            print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15}".format(
+                peak[0],
+                peak[1],
+                peak[2],
+                round(peak[3], 2),
+                round(peak[4], 6),
+                round(peak[5], 6)
+            ))
+
     def printByteObjArray(self,byteObjArray):
         for byte in byteObjArray:
             print("{",

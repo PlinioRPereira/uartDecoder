@@ -63,18 +63,19 @@ class UartDecoder:
         transitions = 0
         startPrefixSamplesQtd = 50      # Set start to 50 samples before window_start to facilitate decoding
 
-        for i in range(len(binary_array) - 1):
-            if binary_array[i] != binary_array[i + 1]:
-                transitions += 1
+        # TODO: FIX THIS
+        # for i in range(len(binary_array) - 1):
+        #     if binary_array[i] != binary_array[i + 1]:
+        #         transitions += 1
 
-                if transitions == 1:
-                    window_start = i
+        #         if transitions == 1:
+        #             window_start = i
 
-                if transitions == self.raiseAndFallEdgesQtd:
-                    window_end = i
-                    break
+        #         if transitions == self.raiseAndFallEdgesQtd:
+        #             window_end = i
+        #             break
         
-        window_start = window_start - startPrefixSamplesQtd if window_start > startPrefixSamplesQtd        
+        # window_start = window_start - startPrefixSamplesQtd if window_start > startPrefixSamplesQtd
 
         return window_start, window_end
 
@@ -318,7 +319,7 @@ class UartDecoder:
         else:
             channelRawValues = self.left_channel[sliceBegin:sliceEnd]
 
-        channelRawValues = np.array(channelRawValues) * -1 if invertSignal        # Hardware reception is inverted, this fix this behavior
+        channelRawValues = np.array(channelRawValues) * -1 if invertSignal else np.array(channelRawValues)       # Hardware reception is inverted, this fix this behavior
 
         self.binaryData = self.binarize(channelRawValues)  # Exemplo de limiar
 
@@ -335,7 +336,7 @@ class UartDecoder:
 
         channelRawValues = self.right_channel if channelNumber == 1 else self.left_channel
 
-        channelRawValues = np.array(channelRawValues) * -1 if invertSignal          # Hardware reception is inverted, this fix this behavior
+        channelRawValues = np.array(channelRawValues) * -1 if invertSignal else np.array(channelRawValues)         # Hardware reception is inverted, this fix this behavior
 
         binary_data = self.binarize(channelRawValues)  # Exemplo de limiar
 
