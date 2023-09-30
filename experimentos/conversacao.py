@@ -106,7 +106,7 @@ def periodic_task():
                 filtered_peaksGiroscopio) > 0:
             gpsSensor.printResultTable("Giroscópio", filtered_peaksGiroscopio, valoresTimestamp,
                                        min_percent_over_threshold)
-            listText = randomSyllabes.generate(filtered_peaksGiroscopio, valoresTimestamp, 523.25) #Dó
+            listText = randomSyllabes.generate(filtered_peaksGiroscopio, valoresTimestamp, Ago) #Dó
             play_lista_de_texto(listText, 'Giroscópio')
 
         peaksInclinometro = gpsSensor.find_peaks(valoresInclinometro, confidence, min_percent_over_threshold)

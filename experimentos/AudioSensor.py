@@ -154,6 +154,8 @@ class AudioSensor:
                     progressCount = progress;
                     print(progress, '%')
                 # sd.sleep(timeout*1000)
+                if elapsed_time > timeout:
+                    self.active = False
 
 
 
