@@ -35,7 +35,6 @@ class GPSSensor:
     def calculate_magnitude(self,x, y, z):
         return math.sqrt(x**2 + y**2 + z**2)
 
-
     def transform_data(self,sensor_data):
         accel_magnitude = self.calculate_magnitude(sensor_data[0], sensor_data[1], sensor_data[2])
         gyro_magnitude = self.calculate_magnitude(sensor_data[3], sensor_data[4], sensor_data[5])

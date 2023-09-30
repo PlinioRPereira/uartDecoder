@@ -8,7 +8,11 @@ sudo apt-get install mbrola
 sudo apt-get install mbrola-br1 mbrola-br2 mbrola-br3
 
 
+
 espeak -v mb-br1 "Texto para falar"
 espeak -v mb-br2 "Texto para falar"
 espeak -v mb-br3 "Texto para falar"
 
+#sudo apt-get install libportaudio2
+#sudo apt-get install portaudio19-dev
+#pip install pyaudio

@@ -76,7 +76,7 @@ class RandomSyllabes:
 
         return random_syllables
 
-    def generate(self,list,timestampList,note):
+    def generate(self,list,note):
         textList = []
         for item in list:
             sil = self.get_random_syllables(item[2],note, 0, 1)
