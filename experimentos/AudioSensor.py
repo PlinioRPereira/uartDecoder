@@ -32,14 +32,14 @@ class AudioSensor:
                 math.floor((obj[4]/min_percent_over_threshold)-1),
             ))
 
-    def calculate_thresholds(self, gps_signal, confidence=95):
+    def calculate_thresholds(self, audio_signal, confidence=95):
         alpha = 100 - (100 - confidence) / 2
         beta = (100 - confidence) / 2
-        max_threshold = np.percentile(gps_signal, alpha)
-        min_threshold = np.percentile(gps_signal, beta)
+        max_threshold = np.percentile(audio_signal, alpha)
+        min_threshold = np.percentile(audio_signal, beta)
         return max_threshold, min_threshold
-    def find_peaks(self,gps_signal, confidence=95, min_percent_over_threshold=10, sampleRate=500):
-        max_threshold, min_threshold = self.calculate_thresholds(gps_signal, confidence)
+    def find_peaks(self,audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=500):
+        max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
         peak_intervals = []
         peak_start = None
@@ -50,7 +50,7 @@ class AudioSensor:
 
         # print("Threshold:", max_threshold,min_threshold)
 
-        for i, sample in enumerate(gps_signal):
+        for i, sample in enumerate(audio_signal):
             is_peak = False
 
 

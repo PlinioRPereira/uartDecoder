@@ -13,6 +13,7 @@ import json
 import numpy as np
 import math
 import csv
+import pandas as pd
 
 
 def csv_to_json(csv_filename):
@@ -103,6 +104,7 @@ def calculate_fft(data, sampling_rate, n_fft=None):
     Retorna:
     - freqs: array com as frequências correspondentes.
     - fft_values: array com as magnitudes dos valores da FFT.
+    - fft_phase: array com as fases dos valores da FFT.
     """
     # Tamanho do sinal
     N = len(data)
@@ -115,15 +117,18 @@ def calculate_fft(data, sampling_rate, n_fft=None):
     fft_values = np.fft.fft(data, n=n_fft)
 
     # Normalizando os valores da FFT
-    fft_values = fft_values[:n_fft//2] / n_fft
+    fft_values = fft_values[:n_fft // 2] / n_fft
 
     # Pegando a magnitude dos valores da FFT
-    fft_values = np.abs(fft_values)
+    fft_magnitude = np.abs(fft_values)
+
+    # Pegando a fase dos valores da FFT
+    fft_phase = np.angle(fft_values)
 
     # Calculando as frequências correspondentes
-    freqs = np.fft.fftfreq(n_fft, 1/sampling_rate)[:n_fft//2]
+    freqs = np.fft.fftfreq(n_fft, 1 / sampling_rate)[:n_fft // 2]
 
-    return freqs, fft_values
+    return freqs, fft_magnitude, fft_phase
 
 
 def onStart(serialInstance):
@@ -147,6 +152,9 @@ def getMaxPercentByFreq(defaultPercent):
     print("{:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<5}".format('POS', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME'))
 
     for iResult, result in enumerate(listOfResult):
+        if not result or not result[0]:
+            continue
+
         peakList = result[0]
         min_percent_over_threshold = result[1]
         channelName = result[2]
@@ -169,22 +177,34 @@ def getMaxPercentByFreq(defaultPercent):
 
 
 def printResultTable():
-    global listOfResult
+    global listOfResult,incoherent_indices_phasesA,incoherent_indices_phasesB
     # Imprimir o título
     print(f"Resultado: \n")
 
     # Imprimir o cabeçalho da tabela
-    print("{:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<5}".format('POS', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME'))
+    print("{:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10}".format('POS', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME','iPhase'))
 
     for iResult, result in enumerate(listOfResult):
+        if not result or not result[0]:
+            continue
+
         peakList = result[0]
         min_percent_over_threshold = result[1]
         channelName = result[2]
         indexFreq = result[3]
         freqValue = result[4]
 
+
+
+
         for i, obj in enumerate(peakList):
-            print("{:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<5}".format(
+            hasIncoherentPhase = any(obj[2] == x[0] for x in incoherent_indices_phasesA) if channelName == 'A' else any(
+                obj[2] == x[0] for x in incoherent_indices_phasesB)
+
+            if hasIncoherentPhase == 0:
+                continue
+
+            print("{:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10}".format(
                 obj[2],
                 obj[3],
                 f"{obj[4]}%",
@@ -192,7 +212,8 @@ def printResultTable():
                 channelName,
                 indexFreq,
                 freqValue,
-                iResult,
+                obj[2],
+                hasIncoherentPhase
             ))
 
     # Imprimir os dados da tabela
@@ -203,6 +224,8 @@ def getResultTable():
     fResult = []
 
     for iResult, result in enumerate(listOfResult):
+        if not result or not result[0]:
+            continue
         peakList = result[0]
         min_percent_over_threshold = result[1]
         channelName = result[2]
@@ -210,6 +233,10 @@ def getResultTable():
         freqValue = result[4]
 
         for i, obj in enumerate(peakList):
+            hasIncoherentPhase = obj[2] in incoherent_indices_phasesA if channelName == 'A' else obj[2] in incoherent_indices_phasesB
+            if hasIncoherentPhase == 0:
+                continue
+
             fResult.append([
                 obj[2],
                 obj[3],
@@ -221,7 +248,6 @@ def getResultTable():
                 iResult,
             ])
     return fResult
-
 
 def saveResultTable():
     global listOfResult
@@ -235,6 +261,50 @@ def saveResultTable():
         csvwriter.writerow(['POS', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME'])
 
         for iResult, result in enumerate(listOfResult):
+            if not result or not result[0]:
+                continue
+
+            peakList = result[0]
+            min_percent_over_threshold = result[1]
+            channelName = result[2]
+            indexFreq = result[3]
+            freqValue = result[4]
+
+            for i, obj in enumerate(peakList):
+                hasIncoherentPhase = any(
+                    obj[2] == x[0] for x in incoherent_indices_phasesA) if channelName == 'A' else any(
+                    obj[2] == x[0] for x in incoherent_indices_phasesB)
+
+                if hasIncoherentPhase == 0:
+                    continue
+
+                # Escreve cada linha no CSV
+                csvwriter.writerow([
+                    obj[2],
+                    obj[3],
+                    obj[4],
+                    math.floor((obj[4] / min_percent_over_threshold) - 1),
+                    channelName,
+                    indexFreq,
+                    freqValue,
+                    iResult,
+                ])
+
+
+def saveCalibration_result():
+    global listOfResult
+
+    # Abre um novo arquivo CSV para escrita
+    with open('calibration_table.csv', 'w', newline='') as csvfile:
+        # Cria um escritor CSV
+        csvwriter = csv.writer(csvfile)
+
+        # Escreve o cabeçalho do CSV
+        csvwriter.writerow(['POS', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME'])
+
+        for iResult, result in enumerate(listOfResult):
+            if not result or not result[0]:
+                continue
             peakList = result[0]
             min_percent_over_threshold = result[1]
             channelName = result[2]
@@ -254,14 +324,44 @@ def saveResultTable():
                     iResult,
                 ])
 
+
+def save_to_csv(freqsA, dataFreqsA, dataPhasesA, X,name,incoherent_indices_phases):
+    # Criando um DataFrame a partir dos dados de frequência
+    df = pd.DataFrame(dataFreqsA, columns=freqsA)
+
+    # Inicializando as colunas com valores padrão
+    df['AlteracaoFase'] = 0
+    df['IndicesFreqComFaseAlterada'] = np.nan
+
+    # Mapeando índices e frequências
+    for entry in incoherent_indices_phases:
+        fft_index, freq_indices = entry[0], entry[1]
+        df.at[fft_index, 'AlteracaoFase'] = 1
+        df.at[fft_index, 'IndicesFreqComFaseAlterada'] = freq_indices
+
+    #df['Phase'] = dataPhasesA
+
+
+    # Salvando o DataFrame como um arquivo CSV
+    df.to_csv(f'fft_data_{X}_samples{name}.csv', index=False)
+
+
 def onStop(data,sensorData):
-    global isRun,dataFreqsA,freqsA,dataFreqsB,freqsB
+    global isRun,dataFreqsA,freqsA,dataFreqsB,freqsB,incoherent_indices_phasesA,incoherent_indices_phasesB,dataPhasesA,dataPhasesB,X
     isRun = False
+    incoherent_indices_phasesA = find_incoherent_phases(dataPhasesA);
+    incoherent_indices_phasesB = find_incoherent_phases(dataPhasesB);
+
     iterateAndAnalysisFreqValues(dataFreqsA, 'A', freqsA)
     iterateAndAnalysisFreqValues(dataFreqsB, 'B', freqsB)
-    # saveResultTable()
+    # saveCalibration_result()
     printResultTable()
 
+    save_to_csv(freqsA,dataFreqsA,dataPhasesA,X,'A',incoherent_indices_phasesA)
+    save_to_csv(freqsB,dataFreqsB,dataPhasesB,X,'B',incoherent_indices_phasesB)
+
+    print('incoherent_indices_phasesA',incoherent_indices_phasesA)
+    print('incoherent_indices_phasesB',incoherent_indices_phasesB)
 
     print(f'Finalizando o contato')
 
@@ -274,10 +374,17 @@ dataB = []
 dataFreqsA = []
 dataFreqsB = []
 
+dataPhasesA = []
+dataPhasesB = []
+
+incoherent_indices_phasesA = []
+incoherent_indices_phasesB = []
+
+
 freqsA = None
 freqsB = None
 
-X = 1024  # Número de amostras para o FFT
+X = 256  # Número de amostras para o FFT
 
 def getValuesByFreqIndex(dataFreqs, index):
     """
@@ -294,13 +401,41 @@ def getValuesByFreqIndex(dataFreqs, index):
     return freq_values
 
 
-confidence = 95
-min_percent_over_threshold = 0.5
+def find_incoherent_phases(phase_array, std_multiplier=2.1413):
+    """
+    Encontra pontos e frequências de incoerência na matriz de fases.
+
+    Parâmetros:
+    - phase_array: array 2D onde cada linha é um conjunto de fases para todas as frequências em um ponto no tempo.
+    - std_multiplier: O número de desvios padrão usado para definir um valor como incoerente.
+
+    Retorna:
+    - incoherent_indices: Uma lista de arrays, onde o primeiro elemento é o índice do cálculo FFT e o segundo é uma lista com os índices das frequências incoerentes.
+    """
+    # Calcular a média e o desvio padrão das fases para cada frequência
+    mean_phases = np.mean(phase_array, axis=0)
+    std_phases = np.std(phase_array, axis=0)
+
+    incoherent_indices = []
+
+    # Verificar cada conjunto de fases para ver se ele é incoerente
+    for i, phases in enumerate(phase_array):
+        deviation = np.abs(phases - mean_phases)
+        freq_indices = np.where(deviation > std_multiplier * std_phases)[0]
+
+        if len(freq_indices) > 0:
+            incoherent_indices.append([i, list(freq_indices)])
+
+    return incoherent_indices
+
+
+confidence = 99
+min_percent_over_threshold = 10
 fator_filtro = 0.80
 
 
 def iterateAndAnalysisFreqValues(dataFreqs,channelName,freqsList):
-    global confidence,min_percent_over_threshold,fator_filtro
+    global confidence,min_percent_over_threshold,fator_filtro,incoherent_indices_phasesA,incoherent_indices_phasesB
     """
     Itera por todos os índices de frequência e imprime os valores correspondentes.
 
@@ -311,22 +446,22 @@ def iterateAndAnalysisFreqValues(dataFreqs,channelName,freqsList):
     for index in range(num_freqs):
         freq_values = getValuesByFreqIndex(dataFreqs, index)
         dynamicMin_percent_over_threshold = math.ceil(getPercentual(str(index)+channelName,min_percent_over_threshold))
-        print('dynamicMin_percent_over_threshold',dynamicMin_percent_over_threshold)
+        # print('dynamicMin_percent_over_threshold',dynamicMin_percent_over_threshold)
         peaksFreq = audioSensor.find_peaks(freq_values, confidence, dynamicMin_percent_over_threshold)
         filtered_peaksFreq = audioSensor.filter_peaks(peaksFreq, fator_filtro)
         if filtered_peaksFreq is not None and isinstance(filtered_peaksFreq, list) and len(
                 filtered_peaksFreq) > 0:
             listOfResult.append([filtered_peaksFreq,dynamicMin_percent_over_threshold,channelName,index,freqsList[index]])
+        else:
+            listOfResult.append(None)
             # audioSensor.printResultTable(f"Channel {channelName} - Freq {index} [{freqsList[index]}]", filtered_peaksFreq,
             #                            min_percent_over_threshold)
             # listText = randomSyllabes.generate(filtered_peaksFreq, 440) #Lá
             # play_lista_de_texto(listText, 'Channel A')
 
 
-
-
 def onData(channelA, channelB):
-    global dataA, dataB,dataFreqsA,dataFreqsB, freqsA,freqsB,X
+    global dataA, dataB,dataFreqsA,dataFreqsB, freqsA,freqsB,X,dataPhasesA,dataPhasesB
 
     # Acrescentando novos dados
     dataA.extend(channelA)
@@ -341,9 +476,11 @@ def onData(channelA, channelB):
         dataA = dataA[X:]
 
         # Cálculo do FFT para os canais A e B
-        freqsA, fft_valuesA = calculate_fft(dataSampleA, 44100)
+        freqsA, fft_valuesA,phase = calculate_fft(dataSampleA, 44100)
 
         dataFreqsA.append(fft_valuesA)
+        dataPhasesA.append(phase)
+
 
     while len(dataB) >= X:
         # Extração das amostras iniciais
@@ -353,9 +490,10 @@ def onData(channelA, channelB):
         dataB = dataB[X:]
 
         # Cálculo do FFT para os canais A e B
-        freqsB, fft_valuesB = calculate_fft(dataSampleB, 44100)
+        freqsB, fft_valuesB,phase = calculate_fft(dataSampleB, 44100)
 
         dataFreqsB.append(fft_valuesB)
+        dataPhasesB.append(phase)
 
 
 def periodic_task():
@@ -459,7 +597,7 @@ def periodic_task():
 
 
 # Instancie a classe que contém os métodos de encontrar e filtrar picos
-timeout = 60  #5x60s = 5min
+timeout = 20  #5x60s = 5min
 def sensor_task():
     audioSensor.startSensor(onStart, onData, onStop, timeout)
     print("Sensor iniciado")
