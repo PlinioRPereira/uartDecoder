@@ -339,12 +339,13 @@ class GPSSensor:
         print(f"Table Title: {title}\n")
 
         # Imprimir o cabeçalho da tabela
-        print("{:<10} {:<20} {:<20} {:<20} {:<10}".format('POS', 'VAL', '%', 'TIME','ACT-VAL'))
+        print("{:<10} {:<10} {:<20} {:<20} {:<20} {:<10}".format('POS','SIZE', 'VAL', '%', 'TIME','ACT-VAL'))
 
         # Imprimir os dados da tabela
         for i, obj in enumerate(byteObjArray):
             print("{:<10} {:<20} {:<20} {:<20} {:<10}".format(
                 obj[2],
+                obj[1]-obj[0],
                 obj[3],
                 f"{obj[4]}%",
                 timestampList[obj[2]],

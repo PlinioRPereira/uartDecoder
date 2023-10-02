@@ -91,6 +91,26 @@ audioSensor = AudioSensor()
 
 isRun = True
 
+def calculate_q_factor(freqs, fft_magnitude):
+    # Encontrar a frequência de ressonância (frequência com amplitude máxima)
+    f_res = freqs[np.argmax(fft_magnitude)]
+
+    # Encontrar a amplitude máxima
+    max_magnitude = np.max(fft_magnitude)
+
+    # Encontrar as frequências onde a magnitude é 1/sqrt(2) da magnitude máxima
+    half_power_points = np.where(fft_magnitude >= max_magnitude / np.sqrt(2))[0]
+
+    # Calcular a largura de banda (Delta f)
+    if len(half_power_points) > 1:
+        delta_f = freqs[half_power_points[-1]] - freqs[half_power_points[0]]
+    else:
+        return -1
+
+    # Calcular e retornar o Fator de Qualidade (Q)
+    Q = f_res / delta_f
+    return Q
+
 
 def calculate_fft(data, sampling_rate, n_fft=None):
     """
@@ -128,7 +148,10 @@ def calculate_fft(data, sampling_rate, n_fft=None):
     # Calculando as frequências correspondentes
     freqs = np.fft.fftfreq(n_fft, 1 / sampling_rate)[:n_fft // 2]
 
-    return freqs, fft_magnitude, fft_phase
+
+    Q = calculate_q_factor(freqs,fft_magnitude)
+
+    return freqs, fft_magnitude, fft_phase,Q
 
 
 def onStart(serialInstance):
@@ -177,12 +200,14 @@ def getMaxPercentByFreq(defaultPercent):
 
 
 def printResultTable():
-    global listOfResult,incoherent_indices_phasesA,incoherent_indices_phasesB
+    global listOfResult,dataAQ,dataBQ,incoherent_indices_phasesA,incoherent_indices_phasesB
     # Imprimir o título
     print(f"Resultado: \n")
 
     # Imprimir o cabeçalho da tabela
-    print("{:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10}".format('POS', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME','iPhase'))
+    print("{:<10} {:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10} {:<10}".format('POS','SIZE', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME','iPhase','QFactor'))
+
+
 
     for iResult, result in enumerate(listOfResult):
         if not result or not result[0]:
@@ -194,18 +219,18 @@ def printResultTable():
         indexFreq = result[3]
         freqValue = result[4]
 
-
-
+        dataQ = dataAQ if channelName == 'A' else dataBQ
 
         for i, obj in enumerate(peakList):
             hasIncoherentPhase = any(obj[2] == x[0] for x in incoherent_indices_phasesA) if channelName == 'A' else any(
                 obj[2] == x[0] for x in incoherent_indices_phasesB)
 
-            if hasIncoherentPhase == 0:
+            if dataQ[obj[2]] == -1:
                 continue
 
-            print("{:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10}".format(
+            print("{:<10} {:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10} {:<10}".format(
                 obj[2],
+                obj[1]-obj[0],
                 obj[3],
                 f"{obj[4]}%",
                 math.floor((obj[4] / min_percent_over_threshold) - 1),
@@ -213,7 +238,8 @@ def printResultTable():
                 indexFreq,
                 freqValue,
                 obj[2],
-                hasIncoherentPhase
+                hasIncoherentPhase,
+                dataQ[obj[2]]
             ))
 
     # Imprimir os dados da tabela
@@ -250,15 +276,15 @@ def getResultTable():
     return fResult
 
 def saveResultTable():
-    global listOfResult
+    global listOfResult,dataAQ,dataBQ,incoherent_indices_phasesA,incoherent_indices_phasesB
 
     # Abre um novo arquivo CSV para escrita
-    with open('calibration_table.csv', 'w', newline='') as csvfile:
+    with open('result_table.csv', 'w', newline='') as csvfile:
         # Cria um escritor CSV
         csvwriter = csv.writer(csvfile)
 
         # Escreve o cabeçalho do CSV
-        csvwriter.writerow(['POS', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME'])
+        csvwriter.writerow(['POS','SIZE', 'VAL', '%', 'ACT-VAL','CH','FREQNum','FREQValue','FRAME','iPhase','QFactor'])
 
         for iResult, result in enumerate(listOfResult):
             if not result or not result[0]:
@@ -270,24 +296,26 @@ def saveResultTable():
             indexFreq = result[3]
             freqValue = result[4]
 
+            dataQ = dataAQ if channelName == 'A' else dataBQ
+
             for i, obj in enumerate(peakList):
                 hasIncoherentPhase = any(
                     obj[2] == x[0] for x in incoherent_indices_phasesA) if channelName == 'A' else any(
                     obj[2] == x[0] for x in incoherent_indices_phasesB)
 
-                if hasIncoherentPhase == 0:
-                    continue
-
                 # Escreve cada linha no CSV
                 csvwriter.writerow([
                     obj[2],
+                    obj[1] - obj[0],
                     obj[3],
-                    obj[4],
+                    f"{obj[4]}%",
                     math.floor((obj[4] / min_percent_over_threshold) - 1),
                     channelName,
                     indexFreq,
                     freqValue,
-                    iResult,
+                    obj[2],
+                    hasIncoherentPhase,
+                    dataQ[obj[2]]
                 ])
 
 
@@ -325,19 +353,27 @@ def saveCalibration_result():
                 ])
 
 
-def save_to_csv(freqsA, dataFreqsA, dataPhasesA, X,name,incoherent_indices_phases):
+def save_to_csv(freqsA, dataFreqsA, dataPhasesA, X,name,incoherent_indices_phases,DataQ):
     # Criando um DataFrame a partir dos dados de frequência
     df = pd.DataFrame(dataFreqsA, columns=freqsA)
 
     # Inicializando as colunas com valores padrão
     df['AlteracaoFase'] = 0
     df['IndicesFreqComFaseAlterada'] = np.nan
+    df['QFactor'] = DataQ
 
     # Mapeando índices e frequências
     for entry in incoherent_indices_phases:
         fft_index, freq_indices = entry[0], entry[1]
+
+        # Converte todos os elementos para string
+        str_freq_indices = list(map(str, freq_indices))
+
+        # Junta os elementos em uma única string separada por vírgulas
+        str_freq_indices_joined = ','.join(str_freq_indices)
+
         df.at[fft_index, 'AlteracaoFase'] = 1
-        df.at[fft_index, 'IndicesFreqComFaseAlterada'] = freq_indices
+        df.at[fft_index, 'IndicesFreqComFaseAlterada'] = str_freq_indices_joined
 
     #df['Phase'] = dataPhasesA
 
@@ -347,7 +383,7 @@ def save_to_csv(freqsA, dataFreqsA, dataPhasesA, X,name,incoherent_indices_phase
 
 
 def onStop(data,sensorData):
-    global isRun,dataFreqsA,freqsA,dataFreqsB,freqsB,incoherent_indices_phasesA,incoherent_indices_phasesB,dataPhasesA,dataPhasesB,X
+    global isRun,dataAQ,dataBQ,dataFreqsA,freqsA,dataFreqsB,freqsB,incoherent_indices_phasesA,incoherent_indices_phasesB,dataPhasesA,dataPhasesB,X
     isRun = False
     incoherent_indices_phasesA = find_incoherent_phases(dataPhasesA);
     incoherent_indices_phasesB = find_incoherent_phases(dataPhasesB);
@@ -356,9 +392,10 @@ def onStop(data,sensorData):
     iterateAndAnalysisFreqValues(dataFreqsB, 'B', freqsB)
     # saveCalibration_result()
     printResultTable()
+    saveResultTable()
 
-    save_to_csv(freqsA,dataFreqsA,dataPhasesA,X,'A',incoherent_indices_phasesA)
-    save_to_csv(freqsB,dataFreqsB,dataPhasesB,X,'B',incoherent_indices_phasesB)
+    save_to_csv(freqsA,dataFreqsA,dataPhasesA,X,'A',incoherent_indices_phasesA,dataAQ)
+    save_to_csv(freqsB,dataFreqsB,dataPhasesB,X,'B',incoherent_indices_phasesB,dataBQ)
 
     print('incoherent_indices_phasesA',incoherent_indices_phasesA)
     print('incoherent_indices_phasesB',incoherent_indices_phasesB)
@@ -370,6 +407,10 @@ def onStop(data,sensorData):
 
 dataA = []
 dataB = []
+
+dataAQ = []
+dataBQ = []
+
 
 dataFreqsA = []
 dataFreqsB = []
@@ -384,7 +425,7 @@ incoherent_indices_phasesB = []
 freqsA = None
 freqsB = None
 
-X = 256  # Número de amostras para o FFT
+X = 1024  # Número de amostras para o FFT
 
 def getValuesByFreqIndex(dataFreqs, index):
     """
@@ -461,7 +502,7 @@ def iterateAndAnalysisFreqValues(dataFreqs,channelName,freqsList):
 
 
 def onData(channelA, channelB):
-    global dataA, dataB,dataFreqsA,dataFreqsB, freqsA,freqsB,X,dataPhasesA,dataPhasesB
+    global dataA,dataAQ,dataBQ, dataB,dataFreqsA,dataFreqsB, freqsA,freqsB,X,dataPhasesA,dataPhasesB
 
     # Acrescentando novos dados
     dataA.extend(channelA)
@@ -476,10 +517,11 @@ def onData(channelA, channelB):
         dataA = dataA[X:]
 
         # Cálculo do FFT para os canais A e B
-        freqsA, fft_valuesA,phase = calculate_fft(dataSampleA, 44100)
+        freqsA, fft_valuesA,phase,Q = calculate_fft(dataSampleA, 44100)
 
         dataFreqsA.append(fft_valuesA)
         dataPhasesA.append(phase)
+        dataAQ.append(Q)
 
 
     while len(dataB) >= X:
@@ -490,10 +532,11 @@ def onData(channelA, channelB):
         dataB = dataB[X:]
 
         # Cálculo do FFT para os canais A e B
-        freqsB, fft_valuesB,phase = calculate_fft(dataSampleB, 44100)
+        freqsB, fft_valuesB,phase,Q = calculate_fft(dataSampleB, 44100)
 
         dataFreqsB.append(fft_valuesB)
         dataPhasesB.append(phase)
+        dataBQ.append(Q)
 
 
 def periodic_task():
@@ -597,7 +640,7 @@ def periodic_task():
 
 
 # Instancie a classe que contém os métodos de encontrar e filtrar picos
-timeout = 20  #5x60s = 5min
+timeout = 60  #5x60s = 5min
 def sensor_task():
     audioSensor.startSensor(onStart, onData, onStop, timeout)
     print("Sensor iniciado")
