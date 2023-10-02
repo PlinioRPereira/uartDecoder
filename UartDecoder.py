@@ -2,12 +2,20 @@ import wave
 import numpy as np
 
 class UartDecoder:
-    def __init__(self, file_path, threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=100):
+    def __init__(self, file_path, threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=20):
         self.file_path = file_path
         self.left_channel, self.right_channel = self.open_uart_wav()  # Removido o argumento adicional
         self.threshold = threshold
         self.samplesQtdToCalcThreshold = samplesQtdToCalcThreshold
         self.raiseAndFallEdgesQtd = raiseAndFallEdgesQtd
+        self.signalLength = len(self.left_channel) 
+
+        self.BitCluster = type("BitCluster", (),
+                            {"value": None, "length": None, "samplesQtd": None, "rest": None, "beginSample": None})
+        
+        self.ByteStruct = type("ByteStruct", (),
+                            {"value": None, "binaryStr": None, "beginSample": None, "beginCluster": None,
+                            "endSample": None})
 
     def open_uart_wav(self):  # Adicionado 'self' aqui
         wav = wave.open(self.file_path, 'rb')  # Usando self.file_path diretamente
@@ -57,25 +65,25 @@ class UartDecoder:
 
         return binary_array
 
-    def findTransmitionWindow(self, binary_array):
+    def findTransmitionWindow(self, binaryArray, raiseAndFallEdgesQtd):
         window_start = None
         window_end = None
         transitions = 0
         startPrefixSamplesQtd = 50      # Set start to 50 samples before window_start to facilitate decoding
 
-        # TODO: FIX THIS
-        # for i in range(len(binary_array) - 1):
-        #     if binary_array[i] != binary_array[i + 1]:
-        #         transitions += 1
+        for i in range(len(binaryArray) - 1):
+            if binaryArray[i] != binaryArray[i + 1]:
+                transitions += 1
 
-        #         if transitions == 1:
-        #             window_start = i
+                if transitions == 1:
+                    window_start = i
 
-        #         if transitions == self.raiseAndFallEdgesQtd:
-        #             window_end = i
-        #             break
+                if transitions == raiseAndFallEdgesQtd:
+                    window_end = i
+                    break
         
-        # window_start = window_start - startPrefixSamplesQtd if window_start > startPrefixSamplesQtd
+        if window_start > startPrefixSamplesQtd:
+            window_start = window_start - startPrefixSamplesQtd 
 
         return window_start, window_end
 
@@ -127,8 +135,6 @@ class UartDecoder:
         return zero_min_length, one_min_length
 
     def generateUartBitStream(self,binary_array, zeroBitLength, oneBitLength, beginSampleOffest=0):
-        BitCluster = type("BitCluster", (),
-                            {"value": None, "length": None, "samplesQtd": None, "rest": None, "beginSample": None})
         output_array = []
         current_value = None
         current_length = 0
@@ -142,7 +148,7 @@ class UartDecoder:
             elif binary_array[i] == current_value:
                 current_length += 1
             else:
-                bit_cluster = BitCluster()
+                bit_cluster = self.BitCluster()
                 if current_value == 1:
                     bitLength = oneBitLength
                 else:
@@ -161,7 +167,7 @@ class UartDecoder:
                 beginSample = i
                 current_length = 1
 
-        bit_cluster = BitCluster()
+        bit_cluster = self.BitCluster()
         bit_cluster.value = current_value
         bit_cluster.length = round(current_length / bitLength)
         bit_cluster.samplesQtd = current_length
@@ -170,7 +176,7 @@ class UartDecoder:
 
         return output_array
 
-    def isThereAnyClusterWithErroMoreThan40Percent(self,uartBitClusterArray, frameBeginIdx, currentClusterIdx):
+    def isThereAnyClusterWithErroMoreThan40Percent(self, uartBitClusterArray, frameBeginIdx, currentClusterIdx):
         for i in range(frameBeginIdx, currentClusterIdx + 1):
             bitCluster = uartBitClusterArray[i]
             if (bitCluster.rest >= 0.4):
@@ -179,7 +185,7 @@ class UartDecoder:
         return False
 
     # This function is called when the uart frame has length bigger than 10 bits
-    def tryFixUartFrame(self,uartBitClusterArray, frameBeginIdx, currentClusterIdx):
+    def tryFixUartFrame(self, uartBitClusterArray, frameBeginIdx, currentClusterIdx):
         byte = ""
 
         try:
@@ -208,7 +214,7 @@ class UartDecoder:
         return bitString[::-1]
     # ... (outras funções também podem ser adicionadas aqui)
 
-    def gray_to_binary(self,gray):
+    def grayToBinary(self, gray):
         binary = ""
         binary += gray[0]  # O bit mais significativo é o mesmo
 
@@ -218,11 +224,7 @@ class UartDecoder:
 
         return int(binary, 2)  # Converte a string binária para um número decimal
 
-    def uartDecode(self,uartBitClusterArray):
-        ByteStruct = type("ByteStruct", (),
-                            {"value": None, "binaryStr": None, "beginSample": None, "beginCluster": None,
-                            "endSample": None})
-
+    def uartDecode(self, uartBitClusterArray):
         outputBytes = []
         startBitDetected = False
         byte = ""
@@ -251,11 +253,11 @@ class UartDecoder:
                         newByte = self.tryFixUartFrame(uartBitClusterArray, frameBeginIdx, i)
                         if newByte != None:
                             startBitDetected = False
-                            byteObj = ByteStruct()
+                            byteObj = self.ByteStruct()
                             print(f"Fixed:  {newByte}.  Begin cluster:  {frameBeginIdx}")
                             byteObj.binaryStr = self.reverseBitOrder(newByte)
 
-                            decoded_gray = self.gray_to_binary(byteObj.binaryStr)
+                            decoded_gray = self.grayToBinary(byteObj.binaryStr)
                             byteObj.value = decoded_gray
 
                             # byteObj.value = int(byteObj.binaryStr, 2)
@@ -276,10 +278,10 @@ class UartDecoder:
                 elif len(byte) == 9 and bit == 1:
                     # Frame is complete
                     startBitDetected = False
-                    byteObj = ByteStruct()
+                    byteObj = self.ByteStruct()
                     byteObj.binaryStr = self.reverseBitOrder(byte[:-1])
 
-                    decoded_gray = self.gray_to_binary(byteObj.binaryStr)
+                    decoded_gray = self.grayToBinary(byteObj.binaryStr)
                     byteObj.value = decoded_gray
 
                     # byteObj.value = int(byteObj.binaryStr, 2)
@@ -306,7 +308,7 @@ class UartDecoder:
                     f"{index}, value={bit_cluster.value}, length={bit_cluster.length}, samplesQtd={bit_cluster.samplesQtd}, rest={bit_cluster.rest}",
                     "}")
 
-    def printByteObjArray(self,byteObjArray):
+    def printByteStructArray(self, byteObjArray):
         for byte in byteObjArray:
             print("{",
                     f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample}, endSample={byte.endSample}, beginCluster={byte.beginCluster}",
@@ -321,14 +323,13 @@ class UartDecoder:
 
         channelRawValues = np.array(channelRawValues) * -1 if invertSignal else np.array(channelRawValues)       # Hardware reception is inverted, this fix this behavior
 
-        self.binaryData = self.binarize(channelRawValues)  # Exemplo de limiar
+        self.binaryData = self.binarize(channelRawValues)
 
-        windowStart, windowEnd = self.findTransmitionWindow(binaryData)
-        # print("window_start:", window_start)
-        # print("window_end:", window_end)
+        windowStart, windowEnd = self.findTransmitionWindow(self.binaryData, self.raiseAndFallEdgesQtd)
+        # print("window_start:", windowStart)
+        # print("window_end:", windowEnd)
 
-        binaryData = self.autoThresholdBinarization(channelRawValues[windowStart: sliceEnd])
-        # print("binary_data:", channelRawValues[window_start: window_end])
+        binaryData = self.autoThresholdBinarization(channelRawValues[windowStart: sliceEnd])        
 
         return binaryData, windowStart, windowEnd
 
@@ -342,8 +343,8 @@ class UartDecoder:
 
         window_start, window_end = self.findTransmitionWindow(binary_data)
 
-        # print("window_start:", window_start)
-        # print("window_end:", window_end)
+        print("window_start:", window_start)
+        print("window_end:", window_end)
 
         binary_data = self.autoThresholdBinarization(channelRawValues[window_start: window_end])
         # print("binary_data:", channelRawValues[window_start: window_end])
@@ -363,10 +364,10 @@ class UartDecoder:
 
     # sliceBegin and sliceEnd are the sample position in raw data
     # windowStart and windowEnd are the sample position in raw data
-    # binaryData is a new array of the size sliceEnd - sliceBegin
+    # binaryData is a new array of the size sliceEnd - windowStart
     def decodeDataSlice(self, sliceBegin=0, sliceEnd=100):
 
-        binaryData, windowStart, windowEnd = self.preprocessSignalData(self, 1, sliceBegin, sliceEnd)
+        binaryData, windowStart, windowEnd = self.preprocessSignalData(1, sliceBegin, sliceEnd)
         
         zeroMinLength, oneMinLength = self.calcBitAverageLength(binaryData, 0, windowEnd - windowStart - 1)
         # print("Bit Length:", zeroMinLength, oneMinLength)
