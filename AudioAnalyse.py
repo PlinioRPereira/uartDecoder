@@ -12,6 +12,45 @@ import json
 import numpy as np
 import csv
 import pandas as pd
+from UartDecoder import UartDecoder
+from PeakFinder import PeakFinder
+import copy
+
+
+def calcular_tempo_aproximado(posicao, buffer=1024, framerate=44100):
+    # Calcula o tempo aproximado em segundos
+    tempo_aproximado = (posicao * buffer) / framerate
+
+    # Converte o tempo para minutos, segundos e milissegundos
+    minutos = int(tempo_aproximado // 60)
+    segundos = int(tempo_aproximado % 60)
+    milissegundos = int((tempo_aproximado * 1000) % 1000)
+
+    # Preenche com zeros à esquerda para ter pelo menos 2 dígitos
+    minutos_str = str(minutos).zfill(2)
+    segundos_str = str(segundos).zfill(2)
+
+    # Preenche com zeros à direita para ter exatamente 3 dígitos em milissegundos
+    milissegundos_str = str(milissegundos)
+    milissegundos_str = milissegundos_str.ljust(3, '0')
+
+    return f"{minutos_str}:{segundos_str}:{milissegundos_str}"
+
+def format_tempo_aproximado(tempo_aproximado):
+    # Converte o tempo para minutos, segundos e milissegundos
+    minutos = int(tempo_aproximado // 60)
+    segundos = int(tempo_aproximado % 60)
+    milissegundos = int((tempo_aproximado * 1000) % 1000)
+
+    # Preenche com zeros à esquerda para ter pelo menos 2 dígitos
+    minutos_str = str(minutos).zfill(2)
+    segundos_str = str(segundos).zfill(2)
+
+    # Preenche com zeros à direita para ter exatamente 3 dígitos em milissegundos
+    milissegundos_str = str(milissegundos)
+    milissegundos_str = milissegundos_str.ljust(3, '0')
+
+    return f"{minutos_str}:{segundos_str}:{milissegundos_str}"
 
 
 class WaveReader:
@@ -126,7 +165,19 @@ class WaveReader:
         max_threshold = np.percentile(audio_signal, alpha)
         min_threshold = np.percentile(audio_signal, beta)
         return max_threshold, min_threshold
-    def find_peaks(self,audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=500):
+
+
+
+    def get_peak_time(self, sampleIdx, sampleRate):
+        rawTimeValue = (sampleIdx*1024) / sampleRate  # Note que é uma divisão aqui
+        # print("rawTimeValue:", rawTimeValue)
+        #
+        # segundos = int(rawTimeValue)
+        # milisegundos = ((rawTimeValue - segundos) * 1000)
+        # time = datetime.timedelta(seconds=segundos, milliseconds=milisegundos)
+        return rawTimeValue
+
+    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=500):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
         peak_intervals = []
@@ -140,7 +191,6 @@ class WaveReader:
 
         for i, sample in enumerate(audio_signal):
             is_peak = False
-
 
             # Check for positive peaks
             if sample > max_threshold and max_threshold != 0:
@@ -170,7 +220,9 @@ class WaveReader:
             elif peak_start is not None:
                 peak_end = i - 1
                 max_peak_position = max_percent_over_time
-                peak_intervals.append([peak_start, peak_end,max_peak_position, diff, max_percent_over])
+                peak_start_time = (peak_start*1024/44100)
+                peak_end_time = (peak_end*1024/44100)
+                peak_intervals.append([peak_start, peak_end, max_peak_position, diff, max_percent_over,peak_start_time,peak_end_time])
                 peak_start = None
                 peak_end = None
                 peak_value = None
@@ -264,28 +316,10 @@ class WaveReader:
 
     def printResultTable(self,listOfResult,dataQ,incoherent_indices_phases):
 
+        allPeaks = []
         # Função para a chave de ordenação
         def sort_key(obj):
             return obj[2]
-
-        def calcular_tempo_aproximado(posicao, buffer=1024, framerate=44100):
-            # Calcula o tempo aproximado em segundos
-            tempo_aproximado = (posicao * buffer) / framerate
-
-            # Converte o tempo para minutos, segundos e milissegundos
-            minutos = int(tempo_aproximado // 60)
-            segundos = int(tempo_aproximado % 60)
-            milissegundos = int((tempo_aproximado * 1000) % 1000)
-
-            # Preenche com zeros à esquerda para ter pelo menos 2 dígitos
-            minutos_str = str(minutos).zfill(2)
-            segundos_str = str(segundos).zfill(2)
-
-            # Preenche com zeros à direita para ter exatamente 3 dígitos em milissegundos
-            milissegundos_str = str(milissegundos)
-            milissegundos_str = milissegundos_str.ljust(3, '0')
-
-            return f"{minutos_str}:{segundos_str}:{milissegundos_str}"
 
         # Imprimir o título
         print(f"Resultado: \n")
@@ -307,6 +341,7 @@ class WaveReader:
             indexFreq = result[3]
             freqValue = result[4]
 
+
             sorted_peakList = sorted(peakList, key=sort_key)
 
             for i, obj in enumerate(sorted_peakList):
@@ -314,6 +349,8 @@ class WaveReader:
 
                 if dataQ[obj[2]] <10:
                     continue
+
+                allPeaks.append(obj)
 
                 print("{:<10} {:<25} {:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10} {:<10}".format(
                     obj[2],
@@ -330,6 +367,9 @@ class WaveReader:
                     dataQ[obj[2]]
                 ))
 
+        return sorted(allPeaks, key=sort_key)
+
+
     def getCompleteResult(self,channel_index=0):
         allData = self.getFFTValues(channel_index)
         freqs = [subarray[0] for subarray in allData][0]
@@ -338,7 +378,7 @@ class WaveReader:
         QFactors = [subarray[3] for subarray in allData]
         incoherent_indices_phases = self.find_incoherent_phases(phases)
         peaksResults = self.iterateAndAnalysisFreqValues(fft_values,channel_index,freqs);
-        self.printResultTable(peaksResults,QFactors,incoherent_indices_phases)
+        return self.printResultTable(peaksResults,QFactors,incoherent_indices_phases)
 
     def getDetail(self):
         """
@@ -369,13 +409,82 @@ class WaveReader:
         self.wav_file.close()
 
 
+utils = PeakFinder()
+
+
+#---UTIL----------------------------------------------------------------------------
+def format_peak( i, peak):
+
+    start_time = format_tempo_aproximado(peak[5])
+    end_time =format_tempo_aproximado(peak[6])
+    percent_over = "{:.2f}%".format(peak[4])
+
+    # Verificar se start_time é igual a end_time
+    if start_time == end_time:
+        time_str = f"{start_time} - {format_tempo_aproximado((peak[1]+1)*1024/44100)}"
+    else:
+        time_str = f"{start_time} - {end_time}"
+
+    formatted_peak = [
+        f'Pico {i + 1}',
+        percent_over,
+        time_str
+    ]
+
+    return formatted_peak
+
+def find_intersection(peaks, decoded_data):
+    intersected_data = []
+
+    for i, peak in enumerate(peaks):
+        peak_start, peak_end = (peak[0]*1024/44100), (peak[1]*1024/44100)
+
+        for data in decoded_data:
+            data_start = data.beginSample  # Acesso correto ao atributo
+            data_end = data.endSample  # Acesso correto ao atributo
+
+            if data_start is None or data_end is None:
+                continue  # Pular para a próxima iteração se algum valor for None
+
+            # Verifica a interseção entre os intervalos de pico e dados
+            if data_start <= peak_end and data_end >= peak_start:
+                data_copy = copy.copy(data)
+                data_copy.peak = format_peak(i, peak)
+                intersected_data.append(data_copy)
+
+    return intersected_data
+
+#---///UTIL----------------------------------------------------------------------------
+
+
 # Uso
-file_path = "test-exp1.wav"  # Coloque o caminho do seu arquivo WAV aqui
-reader = WaveReader(file_path)
+audioPath = "experimentos/test-exp1.wav"  # Coloque o caminho do seu arquivo WAV aqui
+reader = WaveReader(audioPath)
+decoder = UartDecoder(audioPath)
+
+print("Anaĺisando o arquivo ",audioPath)
+
+print("Extraindo canais de audio e preparando a sequencia de Gray...")
+decoded_data = decoder.decode(1)
 
 try:
     details = reader.getDetail()
     print(details)
-    reader.getCompleteResult()
+    peaks = reader.getCompleteResult()
+
+    print("Total de Picos:", len(peaks) )
+
+    selectedBytes = find_intersection(peaks, decoded_data)
+    num_elements = len(selectedBytes)
+    print(f"Foram selecionados {num_elements} bytes da sequencia de Gray")
+    utils.printtable(selectedBytes)
+    print('BIN:',utils.extractBinarySequence(selectedBytes))
+    print('CHAR(Gray):',utils.extractChrSequence(selectedBytes))
+    print('CHAR(BIN):',utils.extractChar2Sequence(selectedBytes))
+    print('CHAR(PT-BR):',utils.extractPortugueseSequence(selectedBytes))
+
+
+
+
 finally:
     reader.close()
