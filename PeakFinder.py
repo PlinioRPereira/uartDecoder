@@ -290,17 +290,15 @@ class PeakFinder:
 
         return filtered_peaks
 
-    def find_intersection(self, peaks, decoded_data):
+    def find_intersection(self, peaks, decoded_data, dataSampleOffset = 0):
         intersectedData = []
 
-        print("TEST: ", len(peaks))
         for i, peak in enumerate(peaks):
-            peak_start, peak_end = peak.start, peak.end
-            print("TEST2: ", peak_start, peak_end)
+            peak_start, peak_end = peak.start, peak.end           
 
             for data in decoded_data:
-                data_start = data.beginSample  
-                data_end = data.endSample
+                data_start = data.beginSample + dataSampleOffset  
+                data_end = data.endSample + dataSampleOffset
 
                 if data_start is None or data_end is None:
                     continue  # Pular para a próxima iteração se algum valor for None
