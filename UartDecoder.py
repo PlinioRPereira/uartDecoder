@@ -200,7 +200,10 @@ class UartDecoder:
                         byte += str(bitCluster.value) * (bitCluster.length - 1)
                     else:
                         byte += str(bitCluster.value) * (bitCluster.length)
-                return byte[1:-1]  # Return removing Stop Bit (last bit=1)
+                if(len(byte) == 10):                                                 # 1 Start + 8 data bits + stop
+                    return byte[1:-1]  # Return removing Stop Bit (last bit=1)
+                else:
+                    return None
             else:
                 # Next cluster isn't a start bit
                 return None
@@ -229,7 +232,7 @@ class UartDecoder:
         startBitDetected = False
         byte = ""
         beginSample = 0
-        frameBeginIdx = 0
+        frameBeginClusterIdx = 0
         i = 0
 
         while i < len(uartBitClusterArray):
@@ -239,7 +242,7 @@ class UartDecoder:
                 if bit == 0:
                     startBitDetected = True
                     beginSample = bitCluster.beginSample
-                    frameBeginIdx = i
+                    frameBeginClusterIdx = i
                     if bitCluster.length == 1:
                         byte = ""
                     else:
@@ -248,55 +251,46 @@ class UartDecoder:
                 byte += str(bit) * bitCluster.length
                 if len(byte) > 9:
                     # Frame is bad formed
-                    if self.isThereAnyClusterWithErroMoreThan40Percent(uartBitClusterArray, frameBeginIdx, i):
+                    if self.isThereAnyClusterWithErroMoreThan40Percent(uartBitClusterArray, frameBeginClusterIdx, i):
                         # One bit cluster must have his length wrong
-                        newByte = self.tryFixUartFrame(uartBitClusterArray, frameBeginIdx, i)
+                        newByte = self.tryFixUartFrame(uartBitClusterArray, frameBeginClusterIdx, i)
                         if newByte != None:
                             startBitDetected = False
                             byteObj = self.ByteStruct()
-                            print(f"Fixed:  {newByte}.  Begin cluster:  {frameBeginIdx}")
+                            print(f"Fixed:  {newByte}.  Begin cluster:  {frameBeginClusterIdx}")
                             byteObj.binaryStr = self.reverseBitOrder(newByte)
 
                             decoded_gray = self.grayToBinary(byteObj.binaryStr)
-                            byteObj.value = decoded_gray
-
-                            # byteObj.value = int(byteObj.binaryStr, 2)
+                            byteObj.value = decoded_gray                            
                             byteObj.beginSample = beginSample
-                            byteObj.beginCluster = frameBeginIdx
+                            byteObj.endSample = 0 + bitCluster.length - 1
+                            byteObj.beginCluster = frameBeginClusterIdx
                             outputBytes.append(byteObj)
                             byte = ""
                         else:
                             # Not possible to fix the frame
                             # Restart the frame reading from the initial frame +1. It means 7 frames behind
                             startBitDetected = False
-                            i = frameBeginIdx + 1
+                            i = frameBeginClusterIdx + 1
                     else:
                         # All lengths are well understanded so the frame reading must start at the wrong place
                         startBitDetected = False
                         print("Bad frame detected at cluster: ", i)
-                        i = frameBeginIdx + 1  # Restart the frame reading from the initial frame +1. It means 7 frames behind
+                        i = frameBeginClusterIdx + 1  # Restart the frame reading from the initial frame +1. It means 7 frames behind
                 elif len(byte) == 9 and bit == 1:
                     # Frame is complete
                     startBitDetected = False
+                    
                     byteObj = self.ByteStruct()
                     byteObj.binaryStr = self.reverseBitOrder(byte[:-1])
-
                     decoded_gray = self.grayToBinary(byteObj.binaryStr)
                     byteObj.value = decoded_gray
-
-                    # byteObj.value = int(byteObj.binaryStr, 2)
-                    if beginSample is not None:
-                        byteObj.beginSample = beginSample
-                    else:
-                        byteObj.beginSample = 0
-
-                    byteObj.beginCluster = frameBeginIdx
-                    if bitCluster.beginSample is not None:
-                        byteObj.endSample = bitCluster.beginSample + bitCluster.length - 1
-                        outputBytes.append(byteObj)
-                    else:
-                        byteObj.endSample = 0 + bitCluster.length - 1
-
+                    # byteObj.value = int(byteObj.binaryStr, 2)                    
+                    byteObj.beginSample = beginSample                    
+                    byteObj.beginCluster = frameBeginClusterIdx
+                    byteObj.endSample = bitCluster.beginSample + bitCluster.length - 1
+                    outputBytes.append(byteObj)
+                    
                     byte = ""
             i = i + 1
 

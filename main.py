@@ -25,9 +25,11 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
         peakAndData = PeakAndDataStruct()        
         sliceBegin = peak.start - samplesQtdBeforePeak if peak.start > samplesQtdBeforePeak else 0
         sliceEnd = peak.end + samplesQtdAfterPeak if peak.end + samplesQtdAfterPeak < decoder.signalLength else decoder.signalLength-1  
+        print("SliceBegin: ", sliceBegin)        
         print("BeginTime: ", utils.get_peak_time(sliceBegin, 44100))
         print("EndTime: ", utils.get_peak_time(sliceEnd, 44100))
-
+        
+        print("Decoding Slice...")   
         decodedArray = decoder.decodeDataSlice(sliceBegin, sliceEnd)
         print("Decoded Array:")
         decoder.printByteStructArray(decodedArray)
