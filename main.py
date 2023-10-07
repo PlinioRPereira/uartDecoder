@@ -10,7 +10,7 @@ print("Analisando o arquivo ", audioPath)
 utils = PeakFinder()
 
 def printDecodedResult(result):
-    print("Peak Idx: ", result.peak.peakIdx) 
+    print("Peak Idx: ", result.peakIdx) 
     decoder.printByteStructArray(result.selectedBytes)
     print("\n")
 

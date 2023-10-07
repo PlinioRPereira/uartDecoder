@@ -262,9 +262,9 @@ class UartDecoder:
 
                             decoded_gray = self.grayToBinary(byteObj.binaryStr)
                             byteObj.value = decoded_gray                            
-                            byteObj.beginSample = beginSample
-                            byteObj.endSample = 0 + bitCluster.length - 1
                             byteObj.beginCluster = frameBeginClusterIdx
+                            byteObj.beginSample = beginSample
+                            byteObj.endSample = bitCluster.beginSample + bitCluster.samplesQtd - 1
                             outputBytes.append(byteObj)
                             byte = ""
                         else:
@@ -278,7 +278,7 @@ class UartDecoder:
                         print("Bad frame detected at cluster: ", i)
                         i = frameBeginClusterIdx + 1  # Restart the frame reading from the initial frame +1. It means 7 frames behind
                 elif len(byte) == 9 and bit == 1:
-                    # Frame is complete
+                    # This bit is stop bit. Frame is complete
                     startBitDetected = False
                     
                     byteObj = self.ByteStruct()
@@ -288,9 +288,8 @@ class UartDecoder:
                     # byteObj.value = int(byteObj.binaryStr, 2)                    
                     byteObj.beginSample = beginSample                    
                     byteObj.beginCluster = frameBeginClusterIdx
-                    byteObj.endSample = bitCluster.beginSample + bitCluster.length - 1
-                    outputBytes.append(byteObj)
-                    
+                    byteObj.endSample = bitCluster.beginSample + bitCluster.samplesQtd - 1
+                    outputBytes.append(byteObj)                    
                     byte = ""
             i = i + 1
 
