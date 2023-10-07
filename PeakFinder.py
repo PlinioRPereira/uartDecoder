@@ -293,19 +293,21 @@ class PeakFinder:
     def find_intersection(self, peaks, decoded_data):
         intersectedData = []
 
+        print("TEST: ", len(peaks))
         for i, peak in enumerate(peaks):
             peak_start, peak_end = peak.start, peak.end
+            print("TEST2: ", peak_start, peak_end)
 
             for data in decoded_data:
-                data_start = data.beginSample   
-                data_end = data.endSample    
+                data_start = data.beginSample  
+                data_end = data.endSample
 
                 if data_start is None or data_end is None:
                     continue  # Pular para a próxima iteração se algum valor for None
 
                 # Verifica a interseção entre os intervalos de pico e dados
-                if data_start <= peak_end and data_end >= peak_start:
-                    intersectedData.append({'peakIdx': i, 'data': data})
+                if (data_start <= peak_end) and (data_end >= peak_start):
+                    intersectedData.append(data)
 
         return intersectedData
 

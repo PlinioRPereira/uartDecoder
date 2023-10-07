@@ -1,13 +1,15 @@
 from UartDecoder import UartDecoder
 from PeakFinder import PeakFinder
 
-audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
+# audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
+audioPath = '/workspaces/uartDecoder/test-exp1.wav'
+
 
 decoder = UartDecoder(audioPath)
 print("Analisando o arquivo ", audioPath)
 utils = PeakFinder()
 
-def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 1000, samplesQtdAfterPeak = 50):
+def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPeak = 500):
     PeakAndDataStruct = type("PeakAndDataStruct", (),
         {"selectedBytes": None, "elementsQtd": None, "header": None, "peak": None })
     result = []
@@ -18,17 +20,21 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 1000, samplesQtdAfterPea
         peakAndData = PeakAndDataStruct()        
         sliceBegin = peak.start - samplesQtdBeforePeak if peak.start > samplesQtdBeforePeak else 0
         sliceEnd = peak.end + samplesQtdAfterPeak if peak.end + samplesQtdAfterPeak < decoder.signalLength else decoder.signalLength-1  
+        print("BeginTime: ", utils.get_peak_time(sliceBegin, 44100))
+        print("EndTime: ", utils.get_peak_time(sliceEnd, 44100))
+
         decodedArray = decoder.decodeDataSlice(sliceBegin, sliceEnd)
         print("Decoded Array:")
         decoder.printByteStructArray(decodedArray)
-
-        # peakAndData.selectedBytes = utils.find_intersection(list(peak), decodedArray) 
-        # peakAndData.elementsQtd = len(peakAndData.selectedBytes)
-        # # pickAndData.header = uartDataPackage.getMessageHeader(byteArray)
-        # peakAndData.peak = peak        
-        # result.append(peakAndData)
-        # totalBytesSelected += peakAndData.elementsQtd
+        
+        peakAndData.selectedBytes = utils.find_intersection([peak], decodedArray) 
+        peakAndData.elementsQtd = len(peakAndData.selectedBytes)
+        # pickAndData.header = uartDataPackage.getMessageHeader(byteArray)
+        peakAndData.peak = peak        
+        result.append(peakAndData)
+        totalBytesSelected += peakAndData.elementsQtd
         # print(byteArray)        
+        break
 
     return result, totalBytesSelected
 
@@ -57,10 +63,10 @@ for iteracao in range(1, 2):
     result, totalBytesSelected = decodeDataAroundPeaks(peaks)
     print("----------------------------------------------------------------------------")
     print("DECODIFICAÇÃO")
-    for i, peak in enumerate(peaks):
-        print("PEAK", i)
-        utils.printPeaks(list(peak))
-        decoder.printByteObjArray(result[i].selectedBytes)
+    # for i, peak in enumerate(peaks):
+    print("PEAK", 0)
+    print("Bytes selected qtd: ", result[0].elementsQtd)
+    decoder.printByteStructArray(result[0].selectedBytes)
     print("\n")
 
     # print(f"Iteração {iteracao}: foram selecionados {totalBytesSelected} bytes da sequencia de Gray, considerando a confiança de {confidence}% e um valor de pico acima de {min_percent_over_threshold}% do limiar (max e min), com um fator de filtro de {filterFactor}")
