@@ -21,6 +21,8 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
     totalBytesSelected = 0
 
     for i, peak in enumerate(peaks):
+        if i != 3: 
+            continue 
         print("\nProcessing peak: ", i)
         peakAndData = PeakAndDataStruct()        
         sliceBegin = peak.start - samplesQtdBeforePeak if peak.start > samplesQtdBeforePeak else 0
@@ -42,8 +44,8 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
         peakAndData.peakIdx = i  
         results.append(peakAndData)
         totalBytesSelected += peakAndData.elementsQtd
-        if i == 1:
-            break                       
+        # if i == 3:
+        #     break                       
 
     return results, totalBytesSelected
 

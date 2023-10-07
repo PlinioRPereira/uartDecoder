@@ -1,5 +1,6 @@
 import wave
 import numpy as np
+import time
 
 class UartDecoder:
     def __init__(self, file_path, threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=20):
@@ -134,7 +135,7 @@ class UartDecoder:
 
         return zero_min_length, one_min_length
 
-    def generateUartBitStream(self,binary_array, zeroBitLength, oneBitLength, beginSampleOffest=0):
+    def generateUartBitStream(self, binary_array, zeroBitLength, oneBitLength, beginSampleOffest=0):
         output_array = []
         current_value = None
         current_length = 0
@@ -172,6 +173,7 @@ class UartDecoder:
         bit_cluster.length = round(current_length / bitLength)
         bit_cluster.samplesQtd = current_length
         bit_cluster.rest = 0
+        bit_cluster.beginSample = beginSample
         output_array.append(bit_cluster)
 
         return output_array
@@ -295,11 +297,17 @@ class UartDecoder:
 
         return outputBytes
 
-    def print_bit_cluster_array(self, array):
+    def printBitClusterArray(self, array):
+        print("{:<6} {:<6} {:<6} {:<6} {:<12} {:<10}".format('index', 'value', 'length', 'samplesQtd', 'rest', 'beginSample'))        
         for index, bit_cluster in enumerate(array):
-            print("{",
-                    f"{index}, value={bit_cluster.value}, length={bit_cluster.length}, samplesQtd={bit_cluster.samplesQtd}, rest={bit_cluster.rest}",
-                    "}")
+            print("{:<6} {:<6} {:<6} {:<6} {:<12} {:<10}".format(
+                index, 
+                bit_cluster.value,
+                bit_cluster.length,
+                bit_cluster.samplesQtd,
+                round(bit_cluster.rest, 6),
+                bit_cluster.beginSample
+            ))
 
     def printByteStructArray(self, byteObjArray):
         for byte in byteObjArray:
@@ -348,7 +356,7 @@ class UartDecoder:
 
         uartBitClusterArray = self.generateUartBitStream(binary_data, zero_min_length, one_min_length, 0)
         # print("Uart Bit Cluster:")
-        # print_bit_cluster_array(uartBitClusterArray)
+        # printBitClusterArray(uartBitClusterArray)
 
         decoded_data = self.uartDecode(uartBitClusterArray)
 
@@ -366,9 +374,10 @@ class UartDecoder:
         # print("Bit Length:", zeroMinLength, oneMinLength)
 
         uartBitClusterArray = self.generateUartBitStream(binaryData, zeroMinLength, oneMinLength)
-        # print("Uart Bit Cluster:")
-        # print_bit_cluster_array(uartBitClusterArray)
+        print("Uart Bit Cluster:")
+        self.printBitClusterArray(uartBitClusterArray)
 
+        time.sleep(2)
         decoded_data = self.uartDecode(uartBitClusterArray)
 
         return decoded_data
