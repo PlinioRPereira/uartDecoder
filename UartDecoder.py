@@ -374,10 +374,9 @@ class UartDecoder:
         # print("Bit Length:", zeroMinLength, oneMinLength)
 
         uartBitClusterArray = self.generateUartBitStream(binaryData, zeroMinLength, oneMinLength)
-        print("Uart Bit Cluster:")
-        self.printBitClusterArray(uartBitClusterArray)
+        # print("Uart Bit Cluster:")
+        # self.printBitClusterArray(uartBitClusterArray)
 
-        time.sleep(2)
         decoded_data = self.uartDecode(uartBitClusterArray)
 
         return decoded_data

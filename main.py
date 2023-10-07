@@ -21,8 +21,8 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
     totalBytesSelected = 0
 
     for i, peak in enumerate(peaks):
-        if i != 3: 
-            continue 
+        # if i != 3: 
+        #     continue 
         print("\nProcessing peak: ", i)
         peakAndData = PeakAndDataStruct()        
         sliceBegin = peak.start - samplesQtdBeforePeak if peak.start > samplesQtdBeforePeak else 0
@@ -50,8 +50,11 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
     return results, totalBytesSelected
 
 # TODO
-# For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, two peaks have the position at 19.83s
+# For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, two peaks have the position at 19.83s. Threat this
 # For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, peaks at 47.4130 and 2:427090 weren't find
+# Check decoded data for all the 5 peaks
+# Check what happens when a peak occours in non decoded data
+# Improve decode algorithm to don't miss any data
 for iteracao in range(1, 2):
     confidence = 96-iteracao
     min_percent_over_threshold = 45
