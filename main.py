@@ -1,39 +1,90 @@
 from UartDecoder import UartDecoder
 from PeakFinder import PeakFinder
 
-audioPath = './test-exp2.wav'
+# audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
+audioPath = '/workspaces/uartDecoder/test-exp1.wav'
+
 
 decoder = UartDecoder(audioPath)
-print("Anaĺisando o arquivo ",audioPath)
-print("Extraindo canais de audio e preparando a sequencia de Gray...")
-decoded_data = decoder.decode(1)
-print("Preparado!")
+print("Analisando o arquivo ", audioPath)
 utils = PeakFinder()
 
-for iteracao in range(1, 6):
+def printDecodedResult(result):
+    print("Peak Idx: ", result.peakIdx) 
+    decoder.printByteStructArray(result.selectedBytes)
+    print("\n")
+
+def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPeak = 500):
+    PeakAndDataStruct = type("PeakAndDataStruct", (),
+        {"selectedBytes": None, "elementsQtd": None, "header": None, "peak": None, "peakIdx": None })
+    results = []
+    totalBytesSelected = 0
+
+    for i, peak in enumerate(peaks):
+        # if i != 3: 
+        #     continue 
+        print("\nProcessing peak: ", i)
+        peakAndData = PeakAndDataStruct()        
+        sliceBegin = peak.start - samplesQtdBeforePeak if peak.start > samplesQtdBeforePeak else 0
+        sliceEnd = peak.end + samplesQtdAfterPeak if peak.end + samplesQtdAfterPeak < decoder.signalLength else decoder.signalLength-1  
+        print("SliceBegin: ", sliceBegin)        
+        print("BeginTime: ", utils.get_peak_time(sliceBegin, 44100))
+        print("EndTime: ", utils.get_peak_time(sliceEnd, 44100))
+        
+        print("Decoding Slice...")   
+        decodedArray = decoder.decodeDataSlice(sliceBegin, sliceEnd)
+        print("Decoded Array:")
+        decoder.printByteStructArray(decodedArray)
+        
+        dataSampleOffset = sliceBegin
+        peakAndData.selectedBytes = utils.find_intersection([peak], decodedArray, dataSampleOffset) 
+        peakAndData.elementsQtd = len(peakAndData.selectedBytes)
+        # pickAndData.header = uartDataPackage.getMessageHeader(byteArray)
+        peakAndData.peak = peak
+        peakAndData.peakIdx = i  
+        results.append(peakAndData)
+        totalBytesSelected += peakAndData.elementsQtd
+        # if i == 3:
+        #     break                       
+
+    return results, totalBytesSelected
+
+# TODO
+# For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, two peaks have the position at 19.83s. Threat this
+# For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, peaks at 47.4130 and 2:427090 weren't find
+# Check decoded data for all the 5 peaks
+# Check what happens when a peak occours in non decoded data
+# Improve decode algorithm to don't miss any data
+for iteracao in range(1, 2):
     confidence = 96-iteracao
     min_percent_over_threshold = 45
-    filterFactor = 0.75
-    allPeaks = utils.find_peaks(decoder.left_channel,confidence,min_percent_over_threshold)
+    filterFactor = 0.4
+    
+    allPeaks = utils.find_peaks(decoder.left_channel, confidence, min_percent_over_threshold)
 
-    peaks = utils.filter_peaks(allPeaks,filterFactor)
+    peaks = utils.filter_peaks(allPeaks, filterFactor)
 
     print("----------------------------------------------------------------------------")
-    print("ITERAÇAO ",iteracao)
+    print("ITERAÇAO ", iteracao)
+    print("Total de Picos:", len(peaks))
+    utils.printPeaks(peaks) 
+    print("\n")
+    # formatedPeaks = utils.format_peaks(peaks)
+    
+    # Decode data
+    results, totalBytesSelected = decodeDataAroundPeaks(peaks)
+    print("----------------------------------------------------------------------------")
+    print("DECODIFICAÇÃO")
+    for i, result in enumerate(results):
+        printDecodedResult(result)
+       
 
-    print("Total de Picos:", len(peaks) )
-    formatedPeaks = utils.format_peaks(peaks)
-    # print("Lista de Picos:",formatedPeaks)
-    # Decodificar os dados
-
-    selectedBytes = utils.find_intersection(peaks, decoded_data)
-    num_elements = len(selectedBytes)
-    print(f"Iteração {iteracao}: foram selecionados {num_elements} bytes da sequencia de Gray, considerando a confiança de {confidence}% e um valor de pico acima de {min_percent_over_threshold}% do limiar (max e min), com um fator de filtro de {filterFactor}")
-    utils.printtable(selectedBytes)
-    print('BIN:',utils.extractBinarySequence(selectedBytes))
-    print('CHAR(Gray):',utils.extractChrSequence(selectedBytes))
-    print('CHAR(BIN):',utils.extractChar2Sequence(selectedBytes))
-    print('CHAR(PT-BR):',utils.extractPortugueseSequence(selectedBytes))
+    # print(f"Iteração {iteracao}: foram selecionados {totalBytesSelected} bytes da sequencia de Gray, considerando a confiança de {confidence}% e um valor de pico acima de {min_percent_over_threshold}% do limiar (max e min), com um fator de filtro de {filterFactor}")
+    # utils.printtable(result.selectedBytes)
+    # print('BIN:',utils.extractBinarySequence(result.selectedBytes))
+    # print('CHAR(Gray):',utils.extractChrSequence(result.selectedBytes))
+    # print('CHAR(BIN):',utils.extractChar2Sequence(result.selectedBytes))
+    # print('CHAR(PT-BR):',utils.extractPortugueseSequence(result.selectedBytes))
 
 
 
