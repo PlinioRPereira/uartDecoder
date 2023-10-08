@@ -2,7 +2,7 @@ from UartDecoder import UartDecoder
 from PeakFinder import PeakFinder
 
 # audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
-audioPath = '/workspaces/uartDecoder/test-exp1.wav'
+audioPath = 'test-exp1.wav'
 
 
 decoder = UartDecoder(audioPath)
@@ -33,8 +33,8 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
         
         print("Decoding Slice...")   
         decodedArray = decoder.decodeDataSlice(sliceBegin, sliceEnd)
-        print("Decoded Array:")
-        decoder.printByteStructArray(decodedArray)
+        # print("Decoded Array:")
+        # decoder.printByteStructArray(decodedArray)
         
         dataSampleOffset = sliceBegin
         peakAndData.selectedBytes = utils.find_intersection([peak], decodedArray, dataSampleOffset) 
@@ -75,16 +75,13 @@ for iteracao in range(1, 2):
     results, totalBytesSelected = decodeDataAroundPeaks(peaks)
     print("----------------------------------------------------------------------------")
     print("DECODIFICAÇÃO")
-    for i, result in enumerate(results):
-        printDecodedResult(result)
-       
+    utils.printtable(results)
+    print('BIN:',utils.extractBinarySequence(results))
+    print('CHAR(Gray):',utils.extractChrSequence(results))
+    print('CHAR(BIN):',utils.extractChar2Sequence(results))
+    print('CHAR(PT-BR):',utils.extractPortugueseSequence(results))
 
-    # print(f"Iteração {iteracao}: foram selecionados {totalBytesSelected} bytes da sequencia de Gray, considerando a confiança de {confidence}% e um valor de pico acima de {min_percent_over_threshold}% do limiar (max e min), com um fator de filtro de {filterFactor}")
-    # utils.printtable(result.selectedBytes)
-    # print('BIN:',utils.extractBinarySequence(result.selectedBytes))
-    # print('CHAR(Gray):',utils.extractChrSequence(result.selectedBytes))
-    # print('CHAR(BIN):',utils.extractChar2Sequence(result.selectedBytes))
-    # print('CHAR(PT-BR):',utils.extractPortugueseSequence(result.selectedBytes))
-
+    # for i, result in enumerate(results):
+    #     printDecodedResult(result)
 
 

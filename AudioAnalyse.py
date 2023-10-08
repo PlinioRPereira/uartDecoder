@@ -347,8 +347,8 @@ class WaveReader:
             for i, obj in enumerate(sorted_peakList):
                 hasIncoherentPhase = obj[2] in incoherent_indices_phases
 
-                if dataQ[obj[2]] <10:
-                    continue
+                # if dataQ[obj[2]] <10:
+                #     continue
 
                 allPeaks.append(obj)
 
@@ -370,14 +370,14 @@ class WaveReader:
         return sorted(allPeaks, key=sort_key)
 
 
-    def getCompleteResult(self,channel_index=0):
+    def getCompleteResult(self,channel_index=1,confidence=95,fator_filtro=0.70,min_percent_over_threshold=90):
         allData = self.getFFTValues(channel_index)
         freqs = [subarray[0] for subarray in allData][0]
         fft_values = [subarray[1] for subarray in allData]
         phases = [subarray[2] for subarray in allData]
         QFactors = [subarray[3] for subarray in allData]
         incoherent_indices_phases = self.find_incoherent_phases(phases)
-        peaksResults = self.iterateAndAnalysisFreqValues(fft_values,channel_index,freqs);
+        peaksResults = self.iterateAndAnalysisFreqValues(fft_values,channel_index,freqs,confidence,fator_filtro,min_percent_over_threshold);
         return self.printResultTable(peaksResults,QFactors,incoherent_indices_phases)
 
     def getDetail(self):
@@ -440,14 +440,17 @@ def find_intersection(peaks, decoded_data):
         peak_start, peak_end = (peak[0]*1024/44100), (peak[1]*1024/44100)
 
         for data in decoded_data:
-            data_start = data.beginSample  # Acesso correto ao atributo
-            data_end = data.endSample  # Acesso correto ao atributo
+            if data.beginSample is None or data.endSample is None:
+                continue
 
-            if data_start is None or data_end is None:
-                continue  # Pular para a próxima iteração se algum valor for None
+            data_start = data.beginSample/44100  # Acesso correto ao atributo
+            data_end = data.endSample/44100  # Acesso correto ao atributo
 
             # Verifica a interseção entre os intervalos de pico e dados
+            # print(data.binaryStr,'|>',data_start,' | ',peak_end,' | ',data_end,' | ',peak_start,'>>>',data_start <= peak_end and data_end >= peak_start)
             if data_start <= peak_end and data_end >= peak_start:
+                # print(data.binaryStr, '|>', data_start, ' | ', peak_end, ' | ', data_end, ' | ', peak_start, '>>>',
+                #       data_start <= peak_end and data_end >= peak_start)
                 data_copy = copy.copy(data)
                 data_copy.peak = format_peak(i, peak)
                 intersected_data.append(data_copy)
@@ -458,30 +461,33 @@ def find_intersection(peaks, decoded_data):
 
 
 # Uso
-audioPath = "experimentos/test-exp1.wav"  # Coloque o caminho do seu arquivo WAV aqui
+audioPath = "efeitoP.wav"  # Coloque o caminho do seu arquivo WAV aqui
 reader = WaveReader(audioPath)
-decoder = UartDecoder(audioPath)
+# decoder = UartDecoder(audioPath)
 
 print("Anaĺisando o arquivo ",audioPath)
 
 print("Extraindo canais de audio e preparando a sequencia de Gray...")
-decoded_data = decoder.decode(1)
+# decoded_data = decoder.decode(1)
 
 try:
     details = reader.getDetail()
     print(details)
-    peaks = reader.getCompleteResult()
+
+
+    channel_number = 0 #//Primeiro Canal
+    peaks = reader.getCompleteResult(channel_number,10,0.10,1000)  #// Pega os picos
 
     print("Total de Picos:", len(peaks) )
 
-    selectedBytes = find_intersection(peaks, decoded_data)
-    num_elements = len(selectedBytes)
-    print(f"Foram selecionados {num_elements} bytes da sequencia de Gray")
-    utils.printtable(selectedBytes)
-    print('BIN:',utils.extractBinarySequence(selectedBytes))
-    print('CHAR(Gray):',utils.extractChrSequence(selectedBytes))
-    print('CHAR(BIN):',utils.extractChar2Sequence(selectedBytes))
-    print('CHAR(PT-BR):',utils.extractPortugueseSequence(selectedBytes))
+    # selectedBytes = find_intersection(peaks, decoded_data)
+    # num_elements = len(selectedBytes)
+    # print(f"Foram selecionados {num_elements} bytes da sequencia de Gray")
+    # utils.printtable(selectedBytes)
+    # print('BIN:',utils.extractBinarySequence(selectedBytes))
+    # print('CHAR(Gray):',utils.extractChrSequence(selectedBytes))
+    # print('CHAR(BIN):',utils.extractChar2Sequence(selectedBytes))
+    # print('CHAR(PT-BR):',utils.extractPortugueseSequence(selectedBytes))
 
 
 
