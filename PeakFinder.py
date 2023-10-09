@@ -260,6 +260,7 @@ class PeakFinder:
                 peak = self.PeakStruct() 
                 peak.start = peak_start
                 peak.end = i - 1
+                peak.position = max_percent_over_sample
                 peak.diff = diff
                 peak.maxValuePercentual = max_percent_over
                 peak.maxValueTime = self.get_peak_time(max_percent_over_sample, sampleRate) 
