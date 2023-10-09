@@ -54,6 +54,8 @@ def format_tempo_aproximado(tempo_aproximado):
 
 
 class WaveReader:
+    PeakStruct = type("PeakStruct", (),
+        {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None, "signal": None, "position": None })
     def __init__(self, file_path):
         self.file_path = file_path
         self.wav_file = wave.open(self.file_path, 'rb')
@@ -177,72 +179,76 @@ class WaveReader:
         # time = datetime.timedelta(seconds=segundos, milliseconds=milisegundos)
         return rawTimeValue
 
-    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=500):
+    def find_peaks(self, audio_signal, confidence=95, min_percent_over_threshold=10, sampleRate=44100):
         max_threshold, min_threshold = self.calculate_thresholds(audio_signal, confidence)
 
-        peak_intervals = []
+        peakSignal = None
+        peakArray = []
         peak_start = None
-        peak_value = None
         max_percent_over = 0
-        max_percent_over_time = 0
-        diff = 0
+        max_percent_over_sample = 0
 
-        # print("Threshold:", max_threshold,min_threshold)
+        # print("Threshold:", max_threshold, min_threshold)
 
         for i, sample in enumerate(audio_signal):
             is_peak = False
 
             # Check for positive peaks
-            if sample > max_threshold and max_threshold != 0:
+            if sample > max_threshold:
                 diff = abs(sample - max_threshold)
                 percent_over = (diff / max_threshold) * 100
-                if max_percent_over < percent_over:
-                    max_percent_over = percent_over
-                    max_percent_over_time = i
                 if percent_over >= min_percent_over_threshold:
                     is_peak = True
+                    peakSignal = '+'
 
             # Check for negative peaks
-            elif sample < min_threshold and min_threshold != 0:
+            elif sample < min_threshold:
                 diff = abs(sample - min_threshold)
                 percent_over = abs((diff / min_threshold)) * 100
-                if max_percent_over < percent_over:
-                    max_percent_over = percent_over
-                    max_percent_over_time = i
                 if percent_over >= min_percent_over_threshold:
                     is_peak = True
+                    peakSignal = '-'
+
+            if (sample < min_threshold or sample > max_threshold) and max_percent_over < percent_over:
+                max_percent_over = percent_over
+                max_percent_over_sample = i
 
             if is_peak:
                 if peak_start is None:
                     peak_start = i
-                    peak_value = sample
-                # No 'else' needed here since 'peak_start' will only be None at the beginning
+
             elif peak_start is not None:
-                peak_end = i - 1
-                max_peak_position = max_percent_over_time
-                peak_start_time = (peak_start*1024/44100)
-                peak_end_time = (peak_end*1024/44100)
-                peak_intervals.append([peak_start, peak_end, max_peak_position, diff, max_percent_over,peak_start_time,peak_end_time])
+                peak = self.PeakStruct()
+                peak.start = peak_start
+                peak.end = i - 1
+                peak.position = max_percent_over_sample
+                peak.diff = diff
+                peak.maxValuePercentual = max_percent_over
+                peak.maxValueTime = self.get_peak_time(max_percent_over_sample, sampleRate)
+                peak.startTime = self.get_peak_time(peak_start, sampleRate)
+                peak.endTime = self.get_peak_time(peak.end, sampleRate)
+                peak.signal = peakSignal
+                peakArray.append(peak)
+
                 peak_start = None
-                peak_end = None
-                peak_value = None
+                peakSignal = None
                 max_percent_over = 0
 
-        return peak_intervals
+        return peakArray
 
     def filter_peaks(self,peak_intervals, x):
         if not peak_intervals:
             return []
 
         # Encontrar o menor e o maior valor de max_percent_over
-        min_percent = min(peak[3] for peak in peak_intervals)
-        max_percent = max(peak[3] for peak in peak_intervals)
+        min_percent = min(peak.maxValuePercentual for peak in peak_intervals)
+        max_percent = max(peak.maxValuePercentual for peak in peak_intervals)
 
         # Calcular o novo limite
         new_threshold = min_percent + (max_percent - min_percent) * x
 
         # Filtrar a lista de picos
-        filtered_peaks = [peak for peak in peak_intervals if peak[3] > new_threshold]
+        filtered_peaks = [peak for peak in peak_intervals if peak.maxValuePercentual > new_threshold]
 
         return filtered_peaks
 
@@ -319,15 +325,15 @@ class WaveReader:
         allPeaks = []
         # Função para a chave de ordenação
         def sort_key(obj):
-            return obj[2]
+            return obj.position
 
         # Imprimir o título
         print(f"Resultado: \n")
 
         # Imprimir o cabeçalho da tabela
-        print("{:<10} {:<25} {:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10} {:<10}".format('POS','TIME', 'SIZE', 'VAL',
-                                                                                                  '%', 'ACT-VAL', 'CH',
-                                                                                                  'FREQNum',
+        print("{:<10} {:<25} {:<10} {:<20} {:<20} {:<10} {:<10} {:<5} {:<5} {:<20} {:<10} {:<10} {:<10}".format('POS','TIME', 'SIZE', 'VAL',
+                                                                                                  '%', 'ACT-VAL','SIGNAL', 'CH',
+                                                                                                  'FNum',
                                                                                                   'FREQValue', 'FRAME',
                                                                                                   'iPhase', 'QFactor'))
 
@@ -345,26 +351,27 @@ class WaveReader:
             sorted_peakList = sorted(peakList, key=sort_key)
 
             for i, obj in enumerate(sorted_peakList):
-                hasIncoherentPhase = obj[2] in incoherent_indices_phases
+                hasIncoherentPhase = obj.position in incoherent_indices_phases
 
-                # if dataQ[obj[2]] <10:
-                #     continue
+                if dataQ[obj.position] <10:
+                    continue
 
                 allPeaks.append(obj)
 
-                print("{:<10} {:<25} {:<10} {:<20} {:<20} {:<20} {:<5} {:<5} {:<20} {:<10} {:<10} {:<10}".format(
-                    obj[2],
-                    f"{calcular_tempo_aproximado(obj[2])}-{calcular_tempo_aproximado(obj[2]+1)}",
-                    obj[1] - obj[0],
-                    obj[3],
-                    f"{obj[4]}%",
-                    math.floor((obj[4] / min_percent_over_threshold) - 1),
+                print("{:<10} {:<25} {:<10} {:<20} {:<20} {:<10} {:<10} {:<5} {:<5} {:<20} {:<10} {:<10} {:<10}".format(
+                    obj.position,
+                    f"{calcular_tempo_aproximado(obj.position)}-{calcular_tempo_aproximado(obj.position+1)}",
+                    round(obj.endTime - obj.startTime,4),
+                    obj.diff,
+                    f"{round(obj.maxValuePercentual,4)}%",
+                    math.floor((obj.maxValuePercentual / min_percent_over_threshold) - 1),
+                    obj.signal,
                     channelName,
                     indexFreq,
                     freqValue,
-                    obj[2],
+                    obj.position,
                     hasIncoherentPhase,
-                    dataQ[obj[2]]
+                    dataQ[obj.position]
                 ))
 
         return sorted(allPeaks, key=sort_key)
@@ -415,13 +422,13 @@ utils = PeakFinder()
 #---UTIL----------------------------------------------------------------------------
 def format_peak( i, peak):
 
-    start_time = format_tempo_aproximado(peak[5])
-    end_time =format_tempo_aproximado(peak[6])
-    percent_over = "{:.2f}%".format(peak[4])
+    start_time = format_tempo_aproximado(peak.startTime)
+    end_time =format_tempo_aproximado(peak.endTime)
+    percent_over = "{:.2f}%".format(peak.maxValuePercentual)
 
     # Verificar se start_time é igual a end_time
     if start_time == end_time:
-        time_str = f"{start_time} - {format_tempo_aproximado((peak[1]+1)*1024/44100)}"
+        time_str = f"{start_time} - {format_tempo_aproximado((peak.end+1)*1024/44100)}"
     else:
         time_str = f"{start_time} - {end_time}"
 
@@ -437,7 +444,7 @@ def find_intersection(peaks, decoded_data):
     intersected_data = []
 
     for i, peak in enumerate(peaks):
-        peak_start, peak_end = (peak[0]*1024/44100), (peak[1]*1024/44100)
+        peak_start, peak_end = (peak.start*1024/44100), (peak.end*1024/44100)
 
         for data in decoded_data:
             if data.beginSample is None or data.endSample is None:
@@ -459,16 +466,51 @@ def find_intersection(peaks, decoded_data):
 
 #---///UTIL----------------------------------------------------------------------------
 
+def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak=24000, samplesQtdAfterPeak=500):
+    PeakAndDataStruct = type("PeakAndDataStruct", (),
+                             {"selectedBytes": None, "elementsQtd": None, "header": None, "peak": None,
+                              "peakIdx": None})
+    results = []
+    totalBytesSelected = 0
+
+    for i, peak in enumerate(peaks):
+        # if i != 3:
+        #     continue
+        print("\nProcessing peak: ", i)
+        peakAndData = PeakAndDataStruct()
+        sliceBegin = peak.start - samplesQtdBeforePeak if peak.start > samplesQtdBeforePeak else 0
+        sliceEnd = peak.end + samplesQtdAfterPeak if peak.end + samplesQtdAfterPeak < decoder.signalLength else decoder.signalLength - 1
+        print("SliceBegin: ", sliceBegin)
+        print("BeginTime: ", utils.get_peak_time(sliceBegin, 44100))
+        print("EndTime: ", utils.get_peak_time(sliceEnd, 44100))
+
+        print("Decoding Slice...")
+        decodedArray = decoder.decodeDataSlice(sliceBegin, sliceEnd)
+        # print("Decoded Array:")
+        # decoder.printByteStructArray(decodedArray)
+
+        dataSampleOffset = sliceBegin
+        peakAndData.selectedBytes = utils.find_intersection([peak], decodedArray, dataSampleOffset)
+        peakAndData.elementsQtd = len(peakAndData.selectedBytes)
+        # pickAndData.header = uartDataPackage.getMessageHeader(byteArray)
+        peakAndData.peak = peak
+        peakAndData.peakIdx = i
+        results.append(peakAndData)
+        totalBytesSelected += peakAndData.elementsQtd
+        # if i == 3:
+        #     break
+
+    return results, totalBytesSelected
+
 
 # Uso
 audioPath = "efeitoP.wav"  # Coloque o caminho do seu arquivo WAV aqui
 reader = WaveReader(audioPath)
-# decoder = UartDecoder(audioPath)
+decoder = UartDecoder(audioPath)
 
 print("Anaĺisando o arquivo ",audioPath)
 
 print("Extraindo canais de audio e preparando a sequencia de Gray...")
-# decoded_data = decoder.decode(1)
 
 try:
     details = reader.getDetail()
@@ -476,20 +518,16 @@ try:
 
 
     channel_number = 0 #//Primeiro Canal
-    peaks = reader.getCompleteResult(channel_number,10,0.10,1000)  #// Pega os picos
+    peaks = reader.getCompleteResult(channel_number,10,0.10,100)  #// Pega os picos
 
     print("Total de Picos:", len(peaks) )
-
-    # selectedBytes = find_intersection(peaks, decoded_data)
-    # num_elements = len(selectedBytes)
-    # print(f"Foram selecionados {num_elements} bytes da sequencia de Gray")
-    # utils.printtable(selectedBytes)
-    # print('BIN:',utils.extractBinarySequence(selectedBytes))
-    # print('CHAR(Gray):',utils.extractChrSequence(selectedBytes))
-    # print('CHAR(BIN):',utils.extractChar2Sequence(selectedBytes))
-    # print('CHAR(PT-BR):',utils.extractPortugueseSequence(selectedBytes))
-
-
+    #
+    # results, totalBytesSelected = decodeDataAroundPeaks(peaks)
+    # utils.printtable(results)
+    # print('BIN:',utils.extractBinarySequence(results))
+    # print('CHAR(Gray):',utils.extractChrSequence(results))
+    # print('CHAR(BIN):',utils.extractChar2Sequence(results))
+    # print('CHAR(PT-BR):',utils.extractPortugueseSequence(results))
 
 
 finally:

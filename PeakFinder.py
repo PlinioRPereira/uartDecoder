@@ -26,7 +26,7 @@ portuguese_chars = [
 
 class PeakFinder:    
     PeakStruct = type("PeakStruct", (),
-        {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None, "signal": None })
+        {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None, "signal": None, "position": None })
 
     def calculate_thresholds(self, audio_signal, confidence=95):
         alpha = 100 - (100 - confidence) / 2  #Eg. 97,5
@@ -248,22 +248,22 @@ class PeakFinder:
                     is_peak = True
                     peakSignal = '-'
 
-            if (sample < min_threshold or sample > max_threshold) and max_percent_over < percent_over:                
+            if (sample < min_threshold or sample > max_threshold) and max_percent_over < percent_over:
                 max_percent_over = percent_over
                 max_percent_over_sample = i
 
             if is_peak:
                 if peak_start is None:
-                    peak_start = i                    
+                    peak_start = i
 
             elif peak_start is not None:
-                peak = self.PeakStruct() 
+                peak = self.PeakStruct()
                 peak.start = peak_start
                 peak.end = i - 1
                 peak.position = max_percent_over_sample
                 peak.diff = diff
                 peak.maxValuePercentual = max_percent_over
-                peak.maxValueTime = self.get_peak_time(max_percent_over_sample, sampleRate) 
+                peak.maxValueTime = self.get_peak_time(max_percent_over_sample, sampleRate)
                 peak.startTime = self.get_peak_time(peak_start, sampleRate)
                 peak.endTime = self.get_peak_time(peak.end, sampleRate)
                 peak.signal = peakSignal

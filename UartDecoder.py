@@ -82,7 +82,11 @@ class UartDecoder:
                 if transitions == raiseAndFallEdgesQtd:
                     window_end = i
                     break
-        
+
+        if window_start == None or startPrefixSamplesQtd == None:
+            return 0, 0
+
+
         if window_start > startPrefixSamplesQtd:
             window_start = window_start - startPrefixSamplesQtd 
 
@@ -369,7 +373,10 @@ class UartDecoder:
     def decodeDataSlice(self, sliceBegin=0, sliceEnd=100):
 
         binaryData, windowStart, windowEnd = self.preprocessSignalData(1, sliceBegin, sliceEnd)
-        
+
+        if windowStart==windowEnd and windowEnd == 0:
+            return []
+
         zeroMinLength, oneMinLength = self.calcBitAverageLength(binaryData, 0, windowEnd - windowStart - 1)
         # print("Bit Length:", zeroMinLength, oneMinLength)
 
