@@ -13,7 +13,7 @@ frequencies = {
     "si": 493.88,
 }
 
-freqAdjustFactor = 1
+freqAdjustFactor = 1/10
 
 def generate_note(note, octave, duration=1.0, sample_rate=44100):
     freq = frequencies[note.lower()] * (2 ** (octave - 4))/freqAdjustFactor

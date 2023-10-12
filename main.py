@@ -3,6 +3,8 @@ from PeakFinder import PeakFinder
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.gridspec import GridSpec
+from scipy.signal import hilbert
+from scipy.signal import butter, lfilter
 
 
 # audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
@@ -116,7 +118,26 @@ def plot_and_save_graph(points: np.ndarray, indexes: np.ndarray, filename: str, 
 def transform_peaks_to_indexes(peaks):
     return [peak.position for peak in peaks]
 
+def getFilteredSignal(signal,frequencia_de_corte = 8000,fs=10000*2):
+    # Configuração do filtro passa-baixa
+      # Frequência de corte em Hz
+    ordem_do_filtro = 8  # Ordem do filtro
 
+    # Calcula os coeficientes do filtro passa-baixa Butterworth
+    b, a = butter(ordem_do_filtro, frequencia_de_corte, fs=fs, btype='low')
+
+    # Aplica o filtro passa-baixa ao sinal
+    sinal_filtrado = lfilter(b, a, signal)
+
+    return sinal_filtrado
+
+
+def getEnvelop(signal):
+    return np.abs(hilbert(signal))
+
+
+signal = getFilteredSignal(decoder.left_channel) # Filter
+# signal = decoder.left_channel
 
 # TODO
 # For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, two peaks have the position at 19.83s. Threat this
@@ -126,12 +147,16 @@ def transform_peaks_to_indexes(peaks):
 # Improve decode algorithm to don't miss any data
 for iteracao in range(1, 2):
     confidence = 96-iteracao
-    min_percent_over_threshold = 45
-    filterFactor = 0.4
-    
-    allPeaks = utils.find_peaks(decoder.left_channel, confidence, min_percent_over_threshold)
+    min_percent_over_threshold = 30
+    filterFactor = 0.5
+    window_size = 8*8  # ajuste conforme necessário # Calcular a energia
 
-    peaks = utils.filter_peaks(allPeaks, filterFactor)
+
+    allPeaks = utils.find_peaks(signal, confidence, min_percent_over_threshold)
+
+    # peaks = utils.filter_peaks(allPeaks, filterFactor)
+    peaks = utils.simple_filter_peaks(allPeaks, 80)
+    # peaks = allPeaks
 
     print("----------------------------------------------------------------------------")
     print("ITERAÇAO ", iteracao)
@@ -150,7 +175,7 @@ for iteracao in range(1, 2):
     print('CHAR(BIN):',utils.extractChar2Sequence(results))
     print('CHAR(PT-BR):',utils.extractPortugueseSequence(results))
 
-    plot_and_save_graph(decoder.left_channel,transform_peaks_to_indexes(peaks),f'Iteracao-{iteracao}.png')
+    plot_and_save_graph(signal,transform_peaks_to_indexes(peaks),f'Iteracao-{iteracao}.png')
 
 
 

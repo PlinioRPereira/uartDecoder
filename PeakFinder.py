@@ -291,6 +291,15 @@ class PeakFinder:
 
         return filtered_peaks
 
+    def simple_filter_peaks(self, peakArray, filterFactor):
+        if not peakArray:
+            return []
+
+        # Filtrar a lista de picos
+        filtered_peaks = [peak for peak in peakArray if peak.maxValuePercentual >= filterFactor]
+
+        return filtered_peaks
+
     def find_intersection(self, peaks, decoded_data, dataSampleOffset = 0):
         intersectedData = []
 
@@ -326,18 +335,19 @@ class PeakFinder:
                     item.peak.signal,
                     f"{round(item.peak.maxValuePercentual, 4)}%",
                     f"{round(item.peak.startTime, 4)}s - {round(item.peak.endTime, 4)}s",
-                    f"{round(item.peak.endTime-item.peak.startTime, 4)}s"
+                    f"{round(item.peak.endTime-item.peak.startTime, 8)}s"
                 ))
     #                 round(peak.maxValueTime, 6),
     #                 round(peak.startTime, 6),
     #                 round(peak.endTime, 6),
     def printPeaks(self, peakArray):        
-        print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15} {:<6}".format('start', 'end', 'diff', 'peak (%)', 'maxPeak Time', 'start time', 'stop time', 'signal'))
+        print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15} {:<6}".format('start', 'end','positiion', 'diff', 'peak (%)', 'maxPeak Time', 'start time', 'stop time', 'signal'))
         for peak in peakArray:
-            print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15} {:<6}".format(
+            print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15} {:<6}".format(
                 peak.start,
                 peak.end,
-                peak.diff,
+                peak.position,
+                round(peak.diff,4),
                 round(peak.maxValuePercentual, 2),
                 round(peak.maxValueTime, 6),                
                 round(peak.startTime, 6),
