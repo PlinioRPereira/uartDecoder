@@ -3,9 +3,16 @@ import numpy as np
 import time
 
 class UartDecoder:
-    def __init__(self, file_path, threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=20):
-        self.file_path = file_path
-        self.left_channel, self.right_channel = self.open_uart_wav()  # Removido o argumento adicional
+    def __init__(self, file_path=False,left_channel=[],right_channel=[], threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=20):
+
+        if file_path!=False:
+            self.file_path = file_path
+            self.left_channel, self.right_channel = self.open_uart_wav()  # Removido o argumento adicional
+        else:
+            self.left_channel=left_channel
+            self.right_channel = right_channel
+
+
         self.threshold = threshold
         self.samplesQtdToCalcThreshold = samplesQtdToCalcThreshold
         self.raiseAndFallEdgesQtd = raiseAndFallEdgesQtd

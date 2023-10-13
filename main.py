@@ -5,14 +5,10 @@ import numpy as np
 from matplotlib.gridspec import GridSpec
 from scipy.signal import hilbert
 from scipy.signal import butter, lfilter
+from AudioSensor import AudioSensor
+import threading
 
 
-# audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
-audioPath = 'test-exp1.wav'
-
-
-decoder = UartDecoder(audioPath)
-print("Analisando o arquivo ", audioPath)
 utils = PeakFinder()
 
 def printDecodedResult(result):
@@ -74,7 +70,7 @@ def plot_combined_graph_corrected(x, y, peaks_indices, window=20, filename='test
     ax_main.scatter(x[peaks_indices], y[peaks_indices], color='red', label='Picos')
     ax_main.legend()
     ax_main.set_title('Gráfico Principal')
-    ax_main.set_xlabel('Eixo X')
+    ax_main.set_xlabel('Eixo samplesLimit')
     ax_main.set_ylabel('Eixo Y')
 
     # Plot dos gráficos de pico
@@ -89,7 +85,7 @@ def plot_combined_graph_corrected(x, y, peaks_indices, window=20, filename='test
         ax1.scatter(x[peak_idx], y[peak_idx], color='red', label='Pico')
         ax1.legend()
         ax1.set_title(f'Pico {i + 1} - Janela Ampliada')
-        ax1.set_xlabel('Eixo X')
+        ax1.set_xlabel('Eixo samplesLimit')
         ax1.set_ylabel('Eixo Y')
 
         # Gráfico com janela original
@@ -102,7 +98,7 @@ def plot_combined_graph_corrected(x, y, peaks_indices, window=20, filename='test
         ax2.scatter(x[peak_idx], y[peak_idx], color='red', label='Pico')
         ax2.legend()
         ax2.set_title(f'Pico {i + 1} - Janela Original')
-        ax2.set_xlabel('Eixo X')
+        ax2.set_xlabel('Eixo samplesLimit')
         ax2.set_ylabel('Eixo Y')
 
     plt.tight_layout()
@@ -136,51 +132,105 @@ def getEnvelop(signal):
     return np.abs(hilbert(signal))
 
 
-signal = getFilteredSignal(decoder.left_channel) # Filter
-# signal = decoder.left_channel
-
-# TODO
-# For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, two peaks have the position at 19.83s. Threat this
-# For C:/Users/DTI Digital/Desktop/test/test-exp1.wav, peaks at 47.4130 and 2:427090 weren't find
-# Check decoded data for all the 5 peaks
-# Check what happens when a peak occours in non decoded data
-# Improve decode algorithm to don't miss any data
-for iteracao in range(1, 2):
-    confidence = 96-iteracao
-    min_percent_over_threshold = 30
-    filterFactor = 0.5
-    window_size = 8*8  # ajuste conforme necessário # Calcular a energia
-
+def handleAnalyseAudio(signal,confidence = 95,min_percent_over_threshold = 30,filterFactor=80):
 
     allPeaks = utils.find_peaks(signal, confidence, min_percent_over_threshold)
 
-    # peaks = utils.filter_peaks(allPeaks, filterFactor)
-    peaks = utils.simple_filter_peaks(allPeaks, 80)
+    # peaks = utils.filter_peaks(allPeaks, filterFactor/100)
+    peaks = utils.simple_filter_peaks(allPeaks, filterFactor)
     # peaks = allPeaks
 
-    print("----------------------------------------------------------------------------")
-    print("ITERAÇAO ", iteracao)
-    print("Total de Picos:", len(peaks))
-    utils.printPeaks(peaks) 
-    print("\n")
-    # formatedPeaks = utils.format_peaks(peaks)
+    if len(peaks)>0:
+        print("Total de Picos:", len(peaks))
+        utils.printPeaks(peaks)
+        print("\n")
+        # formatedPeaks = utils.format_peaks(peaks)
+
+        # Decode data
+        results, totalBytesSelected = decodeDataAroundPeaks(peaks)
+        print("----------------------------------------------------------------------------")
+        print("DECODIFICAÇÃO")
+        utils.printtable(results)
+        print('BIN:', utils.extractBinarySequence(results))
+        print('CHAR(Gray):', utils.extractChrSequence(results))
+        print('CHAR(BIN):', utils.extractChar2Sequence(results))
+        print('CHAR(PT-BR):', utils.extractPortugueseSequence(results))
+
+        # plot_and_save_graph(signal, transform_peaks_to_indexes(peaks), f'Iteracao-{iteracao}.png')
+        
     
-    # Decode data
-    results, totalBytesSelected = decodeDataAroundPeaks(peaks)
-    print("----------------------------------------------------------------------------")
-    print("DECODIFICAÇÃO")
-    utils.printtable(results)
-    print('BIN:',utils.extractBinarySequence(results))
-    print('CHAR(Gray):',utils.extractChrSequence(results))
-    print('CHAR(BIN):',utils.extractChar2Sequence(results))
-    print('CHAR(PT-BR):',utils.extractPortugueseSequence(results))
-
-    plot_and_save_graph(signal,transform_peaks_to_indexes(peaks),f'Iteracao-{iteracao}.png')
+dataA = []
+dataB = []
+samplesLimit = 48000
+dataSampleA=[]
+dataSampleB=[]
+decoder=False
+isRun=True
 
 
+loadFromFile = False
+
+if loadFromFile:
+    # audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
+    audioPath = 'test-exp1.wav'
+    print("Analisando o arquivo ", audioPath)
+    decoder = UartDecoder(audioPath)
+    signal = getFilteredSignal(decoder.left_channel)  # Filter
+    # signal = decoder.left_channel
+    handleAnalyseAudio(signal)
+
+else:
+    audioSensor = AudioSensor()
+    audioSensor.list_audio_devices()
+    timeout = 60  # 5x60s = 5min
 
 
-    # for i, result in enumerate(results):
-    #     printDecodedResult(result)
+    def onStart(serialInstance):
+        global isRun
+        isRun = True
+        print(f'Iniciando o contato - Tempo de contato: {timeout} seguundos')
+
+
+    def onStop(data, sensorData):
+        global isRun
+        isRun = False
+        print(f'Finalizando o contato')
+
+
+    def onData(channelA, channelB):
+        global dataA, dataB, dataSampleA, dataSampleB, decoder
+
+        # Acrescentando novos dados
+        dataA.extend(channelA)
+        dataB.extend(channelB)
+
+        while len(dataB) >= samplesLimit:
+            # Extração das amostras iniciais
+            dataSampleB = dataB[:samplesLimit]
+
+            # Remoção das amostras utilizadas
+            dataB = dataB[samplesLimit:]
+
+        while len(dataA) >= samplesLimit:
+            # Extração das amostras iniciais
+            dataSampleA = dataA[:samplesLimit]
+
+            # Remoção das amostras utilizadas
+            dataA = dataA[samplesLimit:]
+
+            decoder = UartDecoder(False, dataSampleA, dataSampleB)
+
+            handleAnalyseAudio(dataSampleA)
+
+
+
+    def sensor_task():
+        audioSensor.startSensor(onStart, onData, onStop, timeout)
+        print("Sensor iniciado")
+
+
+    thread1 = threading.Thread(target=sensor_task)
+    thread1.start()
+    thread1.join()
 
 
