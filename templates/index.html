@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Streaming de Áudio</title>
+</head>
+<body>
+  <h1>Informações de Áudio</h1>
+  <ul>
+    <li>Nome do dispositivo: {{ audio_info.device_name }}</li>
+    <li>Taxa de amostragem: {{ audio_info.samplerate }}</li>
+    <li>Tipo de dado: {{ audio_info.dtype }}</li>
+    <li>Número de canais: {{ audio_info.channels }}</li>
+    <li>Tamanho do chunk de áudio: {{ audio_info.chunk_size }}</li>
+  </ul>
+
+  <audio controls autoplay>
+    <source src="http://localhost:5000/audio" type="audio/x-wav">
+  </audio>
+
+</body>
+</html>
