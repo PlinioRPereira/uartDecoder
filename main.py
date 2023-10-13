@@ -13,7 +13,7 @@ utils = PeakFinder()
     # FIX THE PRINT METHODE TO MATCH ByteSelectedStruct
 def printDecodedResult(result):
     print("Peak Idx: ", result.peakIdx) 
-    decoder.printByteStructArray(result.selectedBytes)
+    decoder.printByteStructArray(result.selectedBytes.value)
     print("\n")
 
 def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPeak = 500):
