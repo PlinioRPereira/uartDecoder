@@ -1,14 +1,16 @@
 from UartDecoder import UartDecoder
 from PeakFinder import PeakFinder
 
-# audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
-audioPath = '/workspaces/uartDecoder/test-exp1.wav'
+audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
+# audioPath = '/workspaces/uartDecoder/test-exp1.wav'
 
 
 decoder = UartDecoder(audioPath)
 print("Analisando o arquivo ", audioPath)
 utils = PeakFinder()
 
+# TODO 
+    # FIX THE PRINT METHODE TO MATCH ByteSelectedStruct
 def printDecodedResult(result):
     print("Peak Idx: ", result.peakIdx) 
     decoder.printByteStructArray(result.selectedBytes)

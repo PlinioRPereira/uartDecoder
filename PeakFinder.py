@@ -27,7 +27,10 @@ portuguese_chars = [
 class PeakFinder:    
     PeakStruct = type("PeakStruct", (),
         {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None, "signal": None })
-
+    
+    ByteSelectedStruct = type("ByteSelectedStruct", (),
+                            {"value": None, "previousValue": None, "nextValue": None})
+        
     def calculate_thresholds(self, audio_signal, confidence=95):
         alpha = 100 - (100 - confidence) / 2  #Eg. 97,5
         beta = (100 - confidence) / 2         #Eg. 2.5  
@@ -291,6 +294,7 @@ class PeakFinder:
         return filtered_peaks
 
     def find_intersection(self, peaks, decoded_data, dataSampleOffset = 0):
+        
         intersectedData = []
 
         for i, peak in enumerate(peaks):
@@ -305,7 +309,14 @@ class PeakFinder:
 
                 # Verifica a interseção entre os intervalos de pico e dados
                 if (data_start <= peak_end) and (data_end >= peak_start):
-                    intersectedData.append(data)
+                    selectedData = self.ByteSelectedStruct()
+                    
+                    previousData = decoded_data[i-1] if i > 0 else None
+                    nextData = decoded_data[i+1] if i<len(decoded_data) else None  
+                    selectedData.value = data, 
+                    selectedData.previousValue = previousData, 
+                    selectedData.nextValue = nextData 
+                    intersectedData.append(selectedData)
 
         return intersectedData
 

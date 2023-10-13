@@ -16,7 +16,7 @@ class UartDecoder:
         
         self.ByteStruct = type("ByteStruct", (),
                             {"value": None, "binaryStr": None, "beginSample": None, "beginCluster": None,
-                            "endSample": None})
+                            "endSample": None})      
 
     def open_uart_wav(self):  # Adicionado 'self' aqui
         wav = wave.open(self.file_path, 'rb')  # Usando self.file_path diretamente
