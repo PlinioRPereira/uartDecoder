@@ -14,7 +14,6 @@ def printDecodedResult(result):
     print("Peak Idx: ", result.peakIdx) 
     for selectedByte in result.selectedBytes:
         decoder.printByteStructArray([selectedByte])
-    print("\n")
 
 def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPeak = 500):
     PeakAndDataStruct = type("PeakAndDataStruct", (),
@@ -23,8 +22,6 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
     totalBytesSelected = 0
 
     for i, peak in enumerate(peaks):
-        # if i != 3: 
-        #     continue 
         print("\nProcessing peak: ", i)
         peakAndData = PeakAndDataStruct()        
         sliceBegin = peak.start - samplesQtdBeforePeak if peak.start > samplesQtdBeforePeak else 0
@@ -46,9 +43,7 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
         peakAndData.peakIdx = i  
         results.append(peakAndData)
         totalBytesSelected += peakAndData.elementsQtd
-        # if i == 3:
-        #     break                       
-
+        
     return results, totalBytesSelected
 
 
@@ -116,7 +111,7 @@ def transform_peaks_to_indexes(peaks):
 
 def getFilteredSignal(signal,frequencia_de_corte = 8000,fs=10000*2):
     # Configuração do filtro passa-baixa
-      # Frequência de corte em Hz
+    # Frequência de corte em Hz
     ordem_do_filtro = 8  # Ordem do filtro
 
     # Calcula os coeficientes do filtro passa-baixa Butterworth
@@ -155,6 +150,10 @@ def handleAnalyseAudio(signal,confidence = 95,min_percent_over_threshold = 30,fi
         print('CHAR(Gray):', utils.extractChrSequence(results))
         print('CHAR(BIN):', utils.extractChar2Sequence(results))
         print('CHAR(PT-BR):', utils.extractPortugueseSequence(results))
+        print('Raw data: ')
+        for result in results:
+            printDecodedResult(result)
+
 
         # plot_and_save_graph(signal, transform_peaks_to_indexes(peaks), f'Iteracao-{iteracao}.png')
         
@@ -168,11 +167,11 @@ decoder=False
 isRun=True
 
 
-loadFromFile = False
+loadFromFile = True
 
 if loadFromFile:
-    # audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
-    audioPath = 'test-exp1.wav'
+    audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
+    # audioPath = 'test-exp1.wav'
     print("Analisando o arquivo ", audioPath)
     decoder = UartDecoder(audioPath)
     signal = getFilteredSignal(decoder.left_channel)  # Filter
