@@ -9,11 +9,10 @@ decoder = UartDecoder(audioPath)
 print("Analisando o arquivo ", audioPath)
 utils = PeakFinder()
 
-# TODO 
-    # FIX THE PRINT METHODE TO MATCH ByteSelectedStruct
 def printDecodedResult(result):
     print("Peak Idx: ", result.peakIdx) 
-    decoder.printByteStructArray(result.selectedBytes.value)
+    for selectedByte in result.selectedBytes:
+        decoder.printByteStructArray([selectedByte])
     print("\n")
 
 def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPeak = 500):

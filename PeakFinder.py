@@ -25,11 +25,9 @@ portuguese_chars = [
 ]
 
 class PeakFinder:    
-    PeakStruct = type("PeakStruct", (),
-        {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None, "signal": None })
-    
-    ByteSelectedStruct = type("ByteSelectedStruct", (),
-                            {"value": None, "previousValue": None, "nextValue": None})
+    def __init__(self):
+        self.PeakStruct = type("PeakStruct", (),
+            {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None, "signal": None })
         
     def calculate_thresholds(self, audio_signal, confidence=95):
         alpha = 100 - (100 - confidence) / 2  #Eg. 97,5
@@ -297,10 +295,10 @@ class PeakFinder:
         
         intersectedData = []
 
-        for i, peak in enumerate(peaks):
+        for peak in peaks:
             peak_start, peak_end = peak.start, peak.end           
 
-            for data in decoded_data:
+            for j, data in enumerate(decoded_data):
                 data_start = data.beginSample + dataSampleOffset  
                 data_end = data.endSample + dataSampleOffset
 
@@ -309,14 +307,9 @@ class PeakFinder:
 
                 # Verifica a interseção entre os intervalos de pico e dados
                 if (data_start <= peak_end) and (data_end >= peak_start):
-                    selectedData = self.ByteSelectedStruct()
-                    
-                    previousData = decoded_data[i-1] if i > 0 else None
-                    nextData = decoded_data[i+1] if i<len(decoded_data) else None  
-                    selectedData.value = data, 
-                    selectedData.previousValue = previousData, 
-                    selectedData.nextValue = nextData 
-                    intersectedData.append(selectedData)
+                    data.previous = decoded_data[j-1].value if j > 0 else None
+                    data.next = decoded_data[j+1].value if j<len(decoded_data) else None                     
+                    intersectedData.append(data)   
 
         return intersectedData
 
@@ -356,7 +349,7 @@ class PeakFinder:
             print("{",
                     f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample},peak={byte.peak[0]}, endSample={byte.endSample}, beginCluster={byte.beginCluster}",
                     "}")
-
+            
     # Método para extrair a sequência de caracteres da propriedade "chr"
     def extractChrSequence(self,byteObjArray):
         return ''.join([chr(byte.value) for byte in byteObjArray])

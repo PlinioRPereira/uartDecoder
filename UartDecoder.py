@@ -16,7 +16,7 @@ class UartDecoder:
         
         self.ByteStruct = type("ByteStruct", (),
                             {"value": None, "binaryStr": None, "beginSample": None, "beginCluster": None,
-                            "endSample": None})      
+                            "endSample": None, "previous": None, "next": None})
 
     def open_uart_wav(self):  # Adicionado 'self' aqui
         wav = wave.open(self.file_path, 'rb')  # Usando self.file_path diretamente
@@ -312,8 +312,15 @@ class UartDecoder:
     def printByteStructArray(self, byteObjArray):
         for byte in byteObjArray:
             print("{",
-                    f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample}, endSample={byte.endSample}, beginCluster={byte.beginCluster}",
+                    f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample}, endSample={byte.endSample}, beginCluster={byte.beginCluster}, previous={byte.previous}, next={byte.next}",
                     "}")
+    
+    def print3Values(self, previousByteObj, byteObj, nextByteObj):
+        previousValue = previousByteObj if previousByteObj != None else None
+        nextValue = nextByteObj if nextByteObj != None else None
+        print("{",
+            f"previousValue={previousValue}, value={byteObj.value}, nextValue={nextValue}",
+        "}")
 
     def preprocessSignalData(self, channelNumber=1, sliceBegin=0, sliceEnd=100, invertSignal=True):
         
