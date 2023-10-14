@@ -3,9 +3,16 @@ import numpy as np
 import time
 
 class UartDecoder:
-    def __init__(self, file_path, threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=20):
-        self.file_path = file_path
-        self.left_channel, self.right_channel = self.open_uart_wav()  # Removido o argumento adicional
+    def __init__(self, file_path=False,left_channel=[],right_channel=[], threshold=0, samplesQtdToCalcThreshold=100, raiseAndFallEdgesQtd=20):
+
+        if file_path!=False:
+            self.file_path = file_path
+            self.left_channel, self.right_channel = self.open_uart_wav()  # Removido o argumento adicional
+        else:
+            self.left_channel=left_channel
+            self.right_channel = right_channel
+
+
         self.threshold = threshold
         self.samplesQtdToCalcThreshold = samplesQtdToCalcThreshold
         self.raiseAndFallEdgesQtd = raiseAndFallEdgesQtd
@@ -82,7 +89,11 @@ class UartDecoder:
                 if transitions == raiseAndFallEdgesQtd:
                     window_end = i
                     break
-        
+
+        if window_start == None or startPrefixSamplesQtd == None:
+            return 0, 0
+
+
         if window_start > startPrefixSamplesQtd:
             window_start = window_start - startPrefixSamplesQtd 
 
@@ -376,7 +387,10 @@ class UartDecoder:
     def decodeDataSlice(self, sliceBegin=0, sliceEnd=100):
 
         binaryData, windowStart, windowEnd = self.preprocessSignalData(1, sliceBegin, sliceEnd)
-        
+
+        if windowStart==windowEnd and windowEnd == 0:
+            return []
+
         zeroMinLength, oneMinLength = self.calcBitAverageLength(binaryData, 0, windowEnd - windowStart - 1)
         # print("Bit Length:", zeroMinLength, oneMinLength)
 

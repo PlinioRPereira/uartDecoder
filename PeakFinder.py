@@ -27,8 +27,8 @@ portuguese_chars = [
 class PeakFinder:    
     def __init__(self):
         self.PeakStruct = type("PeakStruct", (),
-            {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None, "signal": None })
-        
+            {"start": None, "end": None, "diff": None, "maxValuePercentual": None, "maxValueTime": None, "startTime": None, "endTime": None, "signal": None, "position": None })
+    
     def calculate_thresholds(self, audio_signal, confidence=95):
         alpha = 100 - (100 - confidence) / 2  #Eg. 97,5
         beta = (100 - confidence) / 2         #Eg. 2.5  
@@ -249,21 +249,22 @@ class PeakFinder:
                     is_peak = True
                     peakSignal = '-'
 
-            if (sample < min_threshold or sample > max_threshold) and max_percent_over < percent_over:                
+            if (sample < min_threshold or sample > max_threshold) and max_percent_over < percent_over:
                 max_percent_over = percent_over
                 max_percent_over_sample = i
 
             if is_peak:
                 if peak_start is None:
-                    peak_start = i                    
+                    peak_start = i
 
             elif peak_start is not None:
-                peak = self.PeakStruct() 
+                peak = self.PeakStruct()
                 peak.start = peak_start
                 peak.end = i - 1
+                peak.position = max_percent_over_sample
                 peak.diff = diff
                 peak.maxValuePercentual = max_percent_over
-                peak.maxValueTime = self.get_peak_time(max_percent_over_sample, sampleRate) 
+                peak.maxValueTime = self.get_peak_time(max_percent_over_sample, sampleRate)
                 peak.startTime = self.get_peak_time(peak_start, sampleRate)
                 peak.endTime = self.get_peak_time(peak.end, sampleRate)
                 peak.signal = peakSignal
@@ -291,6 +292,15 @@ class PeakFinder:
 
         return filtered_peaks
 
+    def simple_filter_peaks(self, peakArray, filterFactor):
+        if not peakArray:
+            return []
+
+        # Filtrar a lista de picos
+        filtered_peaks = [peak for peak in peakArray if peak.maxValuePercentual >= filterFactor]
+
+        return filtered_peaks
+
     def find_intersection(self, peaks, decoded_data, dataSampleOffset = 0):
         
         intersectedData = []
@@ -315,28 +325,33 @@ class PeakFinder:
 
     def printtable(self, byteObjArray):
         print(
-            "{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}".format('BIN', 'NUM', 'CHR(GRAY)', 'CHR(BIN)', 'MAP(PT_BR)', 'PICO', '%',
-                                                                            'TEMPO'))
-
-        for byte in byteObjArray:
-            print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<10} {:<15}".format(
-                byte.binaryStr,
-                byte.value,
-                chr(byte.value),
-                chr(int(byte.binaryStr, 2)),
-                portuguese_chars[byte.value % len(portuguese_chars)],
-                byte.peak[0],
-                f"{byte.peak[1]}%",
-                f"{byte.peak[2]}s"
-            ))
-
+            "{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<20} {:<10}".format('BIN', 'NUM', 'CHR(GRAY)', 'CHR(BIN)', 'MAP(ptBR)', 'signal', '%',
+                                                                            'TEMPO','SIZE(s)'))
+        #                     f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample}, endSample={byte.endSample}, beginCluster={byte.beginCluster}",
+        for item in byteObjArray:
+            for byte in item.selectedBytes:
+                print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<10} {:<20} {:<10}".format(
+                    byte.binaryStr,
+                    byte.value,
+                    chr(byte.value),
+                    chr(int(byte.binaryStr, 2)),
+                    portuguese_chars[byte.value % len(portuguese_chars)],
+                    item.peak.signal,
+                    f"{round(item.peak.maxValuePercentual, 4)}%",
+                    f"{round(item.peak.startTime, 4)}s - {round(item.peak.endTime, 4)}s",
+                    f"{round(item.peak.endTime-item.peak.startTime, 8)}s"
+                ))
+    #                 round(peak.maxValueTime, 6),
+    #                 round(peak.startTime, 6),
+    #                 round(peak.endTime, 6),
     def printPeaks(self, peakArray):        
-        print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15} {:<6}".format('start', 'end', 'diff', 'peak (%)', 'maxPeak Time', 'start time', 'stop time', 'signal'))
+        print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15} {:<6}".format('start', 'end','positiion', 'diff', 'peak (%)', 'maxPeak Time', 'start time', 'stop time', 'signal'))
         for peak in peakArray:
-            print("{:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15} {:<6}".format(
+            print("{:<10} {:<10} {:<10} {:<10} {:<10} {:<15} {:<15} {:<15} {:<6}".format(
                 peak.start,
                 peak.end,
-                peak.diff,
+                peak.position,
+                round(peak.diff,4),
                 round(peak.maxValuePercentual, 2),
                 round(peak.maxValueTime, 6),                
                 round(peak.startTime, 6),
@@ -352,17 +367,39 @@ class PeakFinder:
             
     # Método para extrair a sequência de caracteres da propriedade "chr"
     def extractChrSequence(self,byteObjArray):
-        return ''.join([chr(byte.value) for byte in byteObjArray])
+        res = []
+        for item in byteObjArray:
+            res.append(''.join([chr(byte.value) for byte in item.selectedBytes]))
+
+        return ''.join(res)
+
 
     # Método para extrair a sequência de bytes binários da propriedade "binaryStr"
     def extractBinarySequence(self,byteObjArray):
-        return ' '.join([byte.binaryStr for byte in byteObjArray])
+        res = []
+
+        for item in byteObjArray:
+            res.append(' '.join([byte.binaryStr for byte in item.selectedBytes]))
+
+        return ' '.join(res)
+
 
     def extractChar2Sequence(self, byteObjArray):
-        return ''.join([chr(int(byte.binaryStr, 2)) for byte in byteObjArray])
+        res = []
+
+        for item in byteObjArray:
+            res.append(''.join([chr(int(byte.binaryStr, 2)) for byte in item.selectedBytes]))
+
+        return ''.join(res)
+
 
     def extractPortugueseSequence(self,byteObjArray):
-        return ''.join([portuguese_chars[byte.value % len(portuguese_chars)] for byte in byteObjArray])
+        res = []
+
+        for item in byteObjArray:
+            res.append(''.join([portuguese_chars[byte.value % len(portuguese_chars)] for byte in item.selectedBytes]))
+
+        return ''.join(res)
 
     def find_mismatches(self,left_channel, right_channel):
         """
@@ -390,10 +427,3 @@ class PeakFinder:
                 mismatch_indices.append(i)
 
         return np.array(mismatch_indices)
-
-
-
-
-
-
-
