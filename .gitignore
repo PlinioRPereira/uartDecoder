@@ -3,3 +3,4 @@
 /experimentos/contatos/
 *.pyc
 *.wav
+__pycache__

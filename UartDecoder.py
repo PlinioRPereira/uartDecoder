@@ -198,8 +198,9 @@ class UartDecoder:
         return False
 
     # This function is called when the uart frame has length bigger than 10 bits
-    def tryFixUartFrame(self, uartBitClusterArray, frameBeginIdx, currentClusterIdx):
+    def tryFixUartFrame(self, uartBitClusterArray, frameBeginIdx, currentClusterIdx, usingParity):
         byte = ""
+        frameLength = 10 if usingParity else 9     # frameLength = 10 if 8 databits + 1 parity + 1 stop 
 
         try:
             nextCluster = uartBitClusterArray[currentClusterIdx + 1]
@@ -213,8 +214,11 @@ class UartDecoder:
                         byte += str(bitCluster.value) * (bitCluster.length - 1)
                     else:
                         byte += str(bitCluster.value) * (bitCluster.length)
-                if(len(byte) == 10):                                                 # 1 Start + 8 data bits + stop
-                    return byte[1:-1]  # Return removing Stop Bit (last bit=1)
+                if(len(byte) == (frameLength+1)):                                     # 1 Start + 8 data bits + stop
+                    if(usingParity):
+                        return byte[1:-2]  # Return removing Stop bit (last bit=1) and parity bit
+                    else:
+                        return byte[1:-1]  # Return removing Stop bit
                 else:
                     return None
             else:
@@ -240,12 +244,13 @@ class UartDecoder:
 
         return int(binary, 2)  # Converte a string binária para um número decimal
 
-    def uartDecode(self, uartBitClusterArray):
+    def uartDecode(self, uartBitClusterArray, usingParity=True):
         outputBytes = []
         startBitDetected = False
         byte = ""
         beginSample = 0
         frameBeginClusterIdx = 0
+        frameLength = 10 if usingParity else 9     # frameLength = 10 if 8 databits + 1 parity + 1 stop  
         i = 0
 
         while i < len(uartBitClusterArray):
@@ -262,11 +267,11 @@ class UartDecoder:
                         byte = str(bit) * (bitCluster.length - 1)
             elif startBitDetected:
                 byte += str(bit) * bitCluster.length
-                if len(byte) > 9:
+                if len(byte) > frameLength:
                     # Frame is bad formed
                     if self.isThereAnyClusterWithErroMoreThan40Percent(uartBitClusterArray, frameBeginClusterIdx, i):
                         # One bit cluster must have his length wrong
-                        newByte = self.tryFixUartFrame(uartBitClusterArray, frameBeginClusterIdx, i)
+                        newByte = self.tryFixUartFrame(uartBitClusterArray, frameBeginClusterIdx, i, usingParity)
                         if newByte != None:
                             startBitDetected = False
                             byteObj = self.ByteStruct()
@@ -290,12 +295,13 @@ class UartDecoder:
                         startBitDetected = False
                         print("Bad frame detected at cluster: ", i)
                         i = frameBeginClusterIdx + 1  # Restart the frame reading from the initial frame +1. It means 7 frames behind
-                elif len(byte) == 9 and bit == 1:
+                elif len(byte) == frameLength and bit == 1:
                     # This bit is stop bit. Frame is complete
                     startBitDetected = False
                     
+                    payload = byte[:-2] if usingParity else byte[:-1]
                     byteObj = self.ByteStruct()
-                    byteObj.binaryStr = self.reverseBitOrder(byte[:-1])
+                    byteObj.binaryStr = self.reverseBitOrder(payload)
                     decoded_gray = self.grayToBinary(byteObj.binaryStr)
                     byteObj.value = decoded_gray
                     # byteObj.value = int(byteObj.binaryStr, 2)                    
@@ -384,7 +390,7 @@ class UartDecoder:
     # sliceBegin and sliceEnd are the sample position in raw data
     # windowStart and windowEnd are the sample position in raw data
     # binaryData is a new array of the size sliceEnd - windowStart
-    def decodeDataSlice(self, sliceBegin=0, sliceEnd=100):
+    def decodeDataSlice(self, sliceBegin=0, sliceEnd=100, usingParity=True):
 
         binaryData, windowStart, windowEnd = self.preprocessSignalData(1, sliceBegin, sliceEnd)
 
@@ -398,7 +404,7 @@ class UartDecoder:
         # print("Uart Bit Cluster:")
         # self.printBitClusterArray(uartBitClusterArray)
 
-        decoded_data = self.uartDecode(uartBitClusterArray)
+        decoded_data = self.uartDecode(uartBitClusterArray, usingParity)
 
         return decoded_data
 

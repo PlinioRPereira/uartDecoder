@@ -15,7 +15,7 @@ def printDecodedResult(result):
     for selectedByte in result.selectedBytes:
         decoder.printByteStructArray([selectedByte])
 
-def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPeak = 500):
+def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPeak = 500, usingParity=True):
     PeakAndDataStruct = type("PeakAndDataStruct", (),
         {"selectedBytes": None, "elementsQtd": None, "header": None, "peak": None, "peakIdx": None })
     results = []
@@ -31,7 +31,7 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
         print("EndTime: ", utils.get_peak_time(sliceEnd, 44100))
         
         print("Decoding Slice...")   
-        decodedArray = decoder.decodeDataSlice(sliceBegin, sliceEnd)
+        decodedArray = decoder.decodeDataSlice(sliceBegin, sliceEnd, usingParity=False)
         # print("Decoded Array:")
         # decoder.printByteStructArray(decodedArray)
         
@@ -127,7 +127,7 @@ def getEnvelop(signal):
     return np.abs(hilbert(signal))
 
 
-def handleAnalyseAudio(signal,confidence = 95,min_percent_over_threshold = 30,filterFactor=80):
+def handleAnalyseAudio(signal, confidence = 95, min_percent_over_threshold = 30, filterFactor=80):
 
     allPeaks = utils.find_peaks(signal, confidence, min_percent_over_threshold)
 
@@ -142,7 +142,7 @@ def handleAnalyseAudio(signal,confidence = 95,min_percent_over_threshold = 30,fi
         # formatedPeaks = utils.format_peaks(peaks)
 
         # Decode data
-        results, totalBytesSelected = decodeDataAroundPeaks(peaks)
+        results, totalBytesSelected = decodeDataAroundPeaks(peaks, usingParity=False)
         print("----------------------------------------------------------------------------")
         print("DECODIFICAÇÃO")
         utils.printtable(results)
@@ -172,11 +172,17 @@ loadFromFile = True
 if loadFromFile:
     audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
     # audioPath = 'test-exp1.wav'
+    audioPath = 'C:/Users/DTI Digital/Documents/TVC/TVC_Data.wav'
     print("Analisando o arquivo ", audioPath)
     decoder = UartDecoder(audioPath)
     signal = getFilteredSignal(decoder.left_channel)  # Filter
-    # signal = decoder.left_channel
-    handleAnalyseAudio(signal)
+    signal = decoder.left_channel
+    handleAnalyseAudio(decoder.left_channel)
+
+    # TEST
+    # decodedArray = decoder.decodeDataSlice(0, 100000)
+    # decoder.printByteStructArray(decodedArray)
+
 
 else:
     audioSensor = AudioSensor()
