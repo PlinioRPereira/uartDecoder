@@ -22,7 +22,7 @@ class UartDecoder:
                             {"value": None, "length": None, "samplesQtd": None, "rest": None, "beginSample": None})
         
         self.ByteStruct = type("ByteStruct", (),
-                            {"value": None, "binaryStr": None, "beginSample": None, "beginCluster": None,
+                            {"grayValue": None, "value": None, "binaryStr": None, "beginSample": None, "beginCluster": None,
                             "endSample": None, "previous": None, "next": None})
 
     def open_uart_wav(self):  # Adicionado 'self' aqui
@@ -279,7 +279,8 @@ class UartDecoder:
                             byteObj.binaryStr = self.reverseBitOrder(newByte)
 
                             decoded_gray = self.grayToBinary(byteObj.binaryStr)
-                            byteObj.value = decoded_gray                            
+                            byteObj.grayValue = decoded_gray     
+                            byteObj.value = int(byteObj.binaryStr, 2)                    
                             byteObj.beginCluster = frameBeginClusterIdx
                             byteObj.beginSample = beginSample
                             byteObj.endSample = bitCluster.beginSample + bitCluster.samplesQtd - 1
@@ -303,8 +304,8 @@ class UartDecoder:
                     byteObj = self.ByteStruct()
                     byteObj.binaryStr = self.reverseBitOrder(payload)
                     decoded_gray = self.grayToBinary(byteObj.binaryStr)
-                    byteObj.value = decoded_gray
-                    # byteObj.value = int(byteObj.binaryStr, 2)                    
+                    byteObj.grayValue = decoded_gray
+                    byteObj.value = int(byteObj.binaryStr, 2)                    
                     byteObj.beginSample = beginSample                    
                     byteObj.beginCluster = frameBeginClusterIdx
                     byteObj.endSample = bitCluster.beginSample + bitCluster.samplesQtd - 1
@@ -319,7 +320,7 @@ class UartDecoder:
         for index, bit_cluster in enumerate(array):
             print("{:<6} {:<6} {:<6} {:<6} {:<12} {:<10}".format(
                 index, 
-                bit_cluster.value,
+                bit_cluster.grayValue,
                 bit_cluster.length,
                 bit_cluster.samplesQtd,
                 round(bit_cluster.rest, 6),
@@ -329,7 +330,7 @@ class UartDecoder:
     def printByteStructArray(self, byteObjArray):
         for byte in byteObjArray:
             print("{",
-                    f"value={byte.value}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample}, endSample={byte.endSample}, beginCluster={byte.beginCluster}, previous={byte.previous}, next={byte.next}",
+                    f"grayValue={byte.grayValue}, chr={chr(byte.value)}, binaryStr={byte.binaryStr}, beginSample={byte.beginSample}, endSample={byte.endSample}, beginCluster={byte.beginCluster}, previous={byte.previous}, next={byte.next}",
                     "}")
     
     def print3Values(self, previousByteObj, byteObj, nextByteObj):

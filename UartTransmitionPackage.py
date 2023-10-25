@@ -6,24 +6,34 @@ import struct
 
 class UartTransmitionPackage:
 
-    def bytesToInt(self, byteArray):
-        if len(byteArray) != 4:
+    # This methode considers that the byte 4th is the most significant byte and byte 0th is the least
+    def bytesToInt(self, byteList):
+        if len(byteList) != 4:
             raise ValueError("The array must have exactely 4 bytes")        
         
+        byteArray = bytes(byteList)
         number = struct.unpack('I', byteArray)[0]
         return number
     
     def getMessageHeader(self, byteArray):
         
-        pattern = ['*','*','x','x','x','x','*','*','0']
+        pattern = ['*','*','x','x','x','x','*','*', 0]
         for i in range(0, len(byteArray)-len(pattern)-1):
-            if (byteArray[i].value == pattern[0] and 
-                byteArray[i+1] == pattern[1] and
-                byteArray[i+6] == pattern[6] and
-                byteArray[i+7] == pattern[7] and
-                byteArray[i+8] == pattern[8]):
+            print("test {:<5} {:<5} {:<5} {:<5} {:<5} {:<5}".format(
+                i, 
+                chr(byteArray[i].value),
+                chr(byteArray[i+1].value),
+                chr(byteArray[i+6].value),
+                chr(byteArray[i+7].value),
+                byteArray[i+8].value
+            ))                        
+            if (chr(byteArray[i].value) == pattern[0] and 
+                chr(byteArray[i+1].value) == pattern[1] and
+                chr(byteArray[i+6].value) == pattern[6] and
+                chr(byteArray[i+7].value) == pattern[7] and
+                byteArray[i+8].value == pattern[8]):
                 
-                numberArray = [byteArray[i+2], byteArray[i+3], byteArray[i+4], byteArray[i+5]]
+                numberArray = [byteArray[i+2].value, byteArray[i+3].value, byteArray[i+4].value, byteArray[i+5].value]
                 print("Number array is", numberArray)
                 randomNumber = self.bytesToInt(numberArray)
                 return randomNumber

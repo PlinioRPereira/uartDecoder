@@ -13,12 +13,12 @@ audioPath = 'C:/Users/DTI Digital/Documents/TVC/TVC_Data.wav'
 print("Analisando o arquivo ", audioPath)
 decoder = UartDecoder(audioPath)
 decodedArray1 = decoder.decodeDataSlice(0, 10000)
-decodedArray2 = decoder.decodeDataSlice(10000, 5000)
+decodedArray2 = decoder.decodeDataSlice(10000, 50000)
 
 randomSeed1 = transmitionPackage.getMessageHeader(decodedArray1)
 randomSeed2 = transmitionPackage.getMessageHeader(decodedArray2)
 
 # decoder.printByteStructArray(decodedArray1)
 
-# print("Random Seeds are: ", randomSeed1, randomSeed2) 
+print("Random Seeds are: ", randomSeed1, randomSeed2) 
 
