@@ -4,7 +4,7 @@
 # Falling Gray sequence is a sequency of the numbers 254 to 0 in gray code 
 import struct
 
-class UartDataPackage:
+class UartTransmitionPackage:
 
     def bytesToInt(self, byteArray):
         if len(byteArray) != 4:
@@ -17,14 +17,15 @@ class UartDataPackage:
         
         pattern = ['*','*','x','x','x','x','*','*','0']
         for i in range(0, len(byteArray)-len(pattern)-1):
-            if (byteArray[i] == pattern[i] and 
-                byteArray[i+1] == pattern[i+1] and
-                byteArray[i+6] == pattern[i+6] and
-                byteArray[i+7] == pattern[i+7] and
-                byteArray[i+8] == pattern[i+8]):
+            if (byteArray[i].value == pattern[0] and 
+                byteArray[i+1] == pattern[1] and
+                byteArray[i+6] == pattern[6] and
+                byteArray[i+7] == pattern[7] and
+                byteArray[i+8] == pattern[8]):
                 
-                nuberArray = [byteArray[i+2], byteArray[i+3], byteArray[i+4], byteArray[i+5]]
-                randomNumber = self.bytesToInt(nuberArray)
+                numberArray = [byteArray[i+2], byteArray[i+3], byteArray[i+4], byteArray[i+5]]
+                print("Number array is", numberArray)
+                randomNumber = self.bytesToInt(numberArray)
                 return randomNumber
 
         return 0 

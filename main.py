@@ -170,7 +170,7 @@ isRun=True
 loadFromFile = True
 
 if loadFromFile:
-    audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
+    # audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
     # audioPath = 'test-exp1.wav'
     audioPath = 'C:/Users/DTI Digital/Documents/TVC/TVC_Data.wav'
     print("Analisando o arquivo ", audioPath)
@@ -178,10 +178,6 @@ if loadFromFile:
     signal = getFilteredSignal(decoder.left_channel)  # Filter
     signal = decoder.left_channel
     handleAnalyseAudio(decoder.left_channel)
-
-    # TEST
-    # decodedArray = decoder.decodeDataSlice(0, 100000)
-    # decoder.printByteStructArray(decodedArray)
 
 
 else:
