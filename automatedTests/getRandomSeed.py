@@ -18,7 +18,5 @@ decodedArray2 = decoder.decodeDataSlice(10000, 50000)
 randomSeed1 = transmitionPackage.getMessageHeader(decodedArray1)
 randomSeed2 = transmitionPackage.getMessageHeader(decodedArray2)
 
-# decoder.printByteStructArray(decodedArray1)
-
 print("Random Seeds are: ", randomSeed1, randomSeed2) 
 

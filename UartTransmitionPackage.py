@@ -18,15 +18,7 @@ class UartTransmitionPackage:
     def getMessageHeader(self, byteArray):
         
         pattern = ['*','*','x','x','x','x','*','*', 0]
-        for i in range(0, len(byteArray)-len(pattern)-1):
-            print("test {:<5} {:<5} {:<5} {:<5} {:<5} {:<5}".format(
-                i, 
-                chr(byteArray[i].value),
-                chr(byteArray[i+1].value),
-                chr(byteArray[i+6].value),
-                chr(byteArray[i+7].value),
-                byteArray[i+8].value
-            ))                        
+        for i in range(0, len(byteArray)-len(pattern)-1):                   
             if (chr(byteArray[i].value) == pattern[0] and 
                 chr(byteArray[i+1].value) == pattern[1] and
                 chr(byteArray[i+6].value) == pattern[6] and
@@ -34,7 +26,6 @@ class UartTransmitionPackage:
                 byteArray[i+8].value == pattern[8]):
                 
                 numberArray = [byteArray[i+2].value, byteArray[i+3].value, byteArray[i+4].value, byteArray[i+5].value]
-                print("Number array is", numberArray)
                 randomNumber = self.bytesToInt(numberArray)
                 return randomNumber
 
