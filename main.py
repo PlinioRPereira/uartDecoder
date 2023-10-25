@@ -1,5 +1,6 @@
 from UartDecoder import UartDecoder
 from PeakFinder import PeakFinder
+from UartTransmitionPackage import UartTransmitionPackage
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.gridspec import GridSpec
@@ -9,9 +10,11 @@ from AudioSensor import AudioSensor
 import threading
 
 utils = PeakFinder()
+transmitionPackage = UartTransmitionPackage()
 
 def printDecodedResult(result):
-    print("Peak Idx: ", result.peakIdx) 
+    print("Peak Idx: ", result.peakIdx)
+    print("randomSeed: "), result.header 
     for selectedByte in result.selectedBytes:
         decoder.printByteStructArray([selectedByte])
 
@@ -38,7 +41,7 @@ def decodeDataAroundPeaks(peaks, samplesQtdBeforePeak = 24000, samplesQtdAfterPe
         dataSampleOffset = sliceBegin
         peakAndData.selectedBytes = utils.find_intersection([peak], decodedArray, dataSampleOffset) 
         peakAndData.elementsQtd = len(peakAndData.selectedBytes)
-        # pickAndData.header = uartDataPackage.getMessageHeader(byteArray)
+        peakAndData.header = transmitionPackage.getMessageHeader(decodedArray)
         peakAndData.peak = peak
         peakAndData.peakIdx = i  
         results.append(peakAndData)
@@ -170,9 +173,8 @@ isRun=True
 loadFromFile = True
 
 if loadFromFile:
-    # audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
-    # audioPath = 'test-exp1.wav'
-    audioPath = 'C:/Users/DTI Digital/Documents/TVC/TVC_Data.wav'
+    audioPath = 'C:/Users/DTI Digital/Desktop/test/test-exp1.wav'
+    # audioPath = 'test-exp1.wav'  
     print("Analisando o arquivo ", audioPath)
     decoder = UartDecoder(audioPath)
     signal = getFilteredSignal(decoder.left_channel)  # Filter
